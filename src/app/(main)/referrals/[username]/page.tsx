@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/server-auth";
 import { headers, cookies } from "next/headers";
 import OnboardingBadge from "../OnboardingBadge";
+import BackLink from "@/components/BackLink";
 import ReferralTabsShell from "../ReferralTabsShell";
 import OrdersFilters from "./orders-filters";
 
@@ -40,22 +41,24 @@ export default async function ReferralDetailPage({ params, searchParams }: { par
   const overview = (
     <>
       {detail?.referral && (
-        <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-md border p-3">
-            <div className="text-xs text-muted-foreground">Onboarding</div>
-            <div className="mt-1"><OnboardingBadge status={detail.referral.onboarding_status} /></div>
-          </div>
-          <div className="rounded-md border p-3">
-            <div className="text-xs text-muted-foreground">Account</div>
-            <div className="mt-1 capitalize">{detail.referral.account_status}</div>
-          </div>
-          <div className="rounded-md border p-3">
-            <div className="text-xs text-muted-foreground">Processed</div>
-            <div className="mt-1 font-medium">{formatCurrency(Number(detail.referral.amount_processed || 0))}</div>
-          </div>
-          <div className="rounded-md border p-3">
-            <div className="text-xs text-muted-foreground">Orders</div>
-            <div className="mt-1 font-medium">{Number(detail.referral.orders_count || 0)}</div>
+        <section className="space-y-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Onboarding</div>
+              <div className="mt-1"><OnboardingBadge status={detail.referral.onboarding_status} /></div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Account</div>
+              <div className="mt-1"><AccountStatusBadge status={detail.referral.account_status || 'active'} /></div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Processed</div>
+              <div className="mt-1 font-medium">{formatCurrency(Number(detail.referral.amount_processed || 0))}</div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Orders</div>
+              <div className="mt-1 font-medium">{Number(detail.referral.orders_count || 0)}</div>
+            </div>
           </div>
         </section>
       )}
@@ -96,6 +99,7 @@ export default async function ReferralDetailPage({ params, searchParams }: { par
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <BackLink className="mb-2" to="/referrals" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Referral: {params.username}</h1>
       </header>
@@ -105,7 +109,7 @@ export default async function ReferralDetailPage({ params, searchParams }: { par
 }
 
 function formatCurrency(v: number) {
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(v); } catch { return `$${v.toFixed(2)}`; }
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v); } catch { return `${Math.round(v)} ₫`; }
 }
 function formatDate(iso: string) { try { return new Date(iso).toLocaleString(); } catch { return iso; } }
 
@@ -130,4 +134,15 @@ function ReferralPagination({ page, pages }: { page: number; pages: number }) {
       <a className={`text-sm underline-offset-4 ${page>=pages?'pointer-events-none opacity-50':'hover:underline'}`} href={nextHref}>Next</a>
     </div>
   );
+}
+
+function AccountStatusBadge({ status }: { status: string }) {
+  const norm = (status || '').toLowerCase();
+  const label = norm === 'onboarding' ? 'Onboarding' : norm === 'deactivated' ? 'Deactivated' : 'Active';
+  const cls = norm === 'active'
+    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+    : norm === 'deactivated'
+      ? 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
 }

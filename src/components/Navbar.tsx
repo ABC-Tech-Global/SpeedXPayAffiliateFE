@@ -39,7 +39,7 @@ export default function Navbar({ user }: Props) {
         setKycStatus(data?.kyc?.status || null);
         const prof = await fetch('/api/me/profile', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}));
         const pay = prof?.payment || {};
-        setPayoutReady(Boolean(pay?.payoutMethod) && Boolean(pay?.payoutEmail));
+        setPayoutReady(Boolean(pay?.bankName) && Boolean(pay?.bankAccountNumber));
       } catch {}
     })();
     return () => { alive = false };
@@ -48,6 +48,8 @@ export default function Navbar({ user }: Props) {
   // Sheet handles focus trap; we only ensure close on route change.
 
   if (pathname?.startsWith("/login")) return null;
+
+  
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur">

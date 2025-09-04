@@ -6,6 +6,7 @@ import PayoutsFilters from "./payouts-filters";
 import PayoutsPagination from "./payouts-pagination";
 
 type Tx = { type: string; amount: string; description: string; created_at: string };
+type Withdrawal = { id: number; amount: number | string; status: string; reviewer_note?: string | null; created_at?: string };
 
 export default async function PayoutsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireUser();
@@ -29,10 +30,12 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
   let history: Tx[] = [];
   let total = 0;
   let allowWithdraw = false;
+  let withdrawals: Withdrawal[] = [];
   try {
-    const [res, prof] = await Promise.all([
+    const [res, prof, wres] = await Promise.all([
       fetch(url, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
-      fetch(profileUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } })
+      fetch(profileUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
+      fetch(`${proto}://${host}/api/me/withdrawals?limit=10&page=1`, { cache: 'no-store', headers: { Cookie: cookieHeader } })
     ]);
     const data = await res.json();
     balance = Number(data?.balance || 0);
@@ -40,7 +43,9 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
     total = Number(data?.total || 0);
     const profData = await prof.json().catch(() => ({}));
     const payout = profData?.payment || {};
-    allowWithdraw = Boolean(payout?.payoutMethod) && Boolean(payout?.payoutEmail);
+    allowWithdraw = Boolean(payout?.bankName) && Boolean(payout?.bankAccountNumber);
+    const wd = await wres.json().catch(() => ({}));
+    withdrawals = Array.isArray(wd?.withdrawals) ? wd.withdrawals : [];
   } catch {}
 
   return (
@@ -59,6 +64,40 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
           <WithdrawClient balance={balance} allow={allowWithdraw} />
           {!allowWithdraw && (
             <div className="mt-2 text-xs text-red-600">Add payout bank details in Profile → Payment to request payouts.</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Withdrawal requests</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {withdrawals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No withdrawal requests yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b">
+                    <th className="py-2 pr-4">Date</th>
+                    <th className="py-2 pr-4">Status</th>
+                    <th className="py-2 pr-4 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {withdrawals.map((w) => (
+                    <tr key={w.id} className="border-b last:border-0">
+                      <td className="py-2 pr-4">{formatDate(String(w.created_at || ''))}</td>
+                      <td className="py-2 pr-4">
+                        <StatusBadge status={String(w.status)} />
+                      </td>
+                      <td className="py-2 pr-4 text-right">{formatCurrency(Number(w.amount || 0))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -106,12 +145,23 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
 
 function formatCurrency(v: number) {
   try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(v);
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
   } catch {
-    return `$${v.toFixed(2)}`;
+    return `${Math.round(v)} ₫`;
   }
 }
 
 function formatDate(iso: string) {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const norm = status.toLowerCase();
+  const label = norm === 'approved' ? 'Approved' : norm === 'rejected' ? 'Rejected' : 'Pending';
+  const cls = norm === 'approved'
+    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+    : norm === 'rejected'
+      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
 }

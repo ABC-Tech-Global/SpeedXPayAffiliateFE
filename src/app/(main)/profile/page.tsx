@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/server-auth";
 import ProfileTabs from "./ProfileTabs";
+import BackLink from "@/components/BackLink";
 import { headers, cookies } from "next/headers";
 
 export default async function ProfilePage() {
@@ -18,6 +19,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-8">
+      <BackLink className="mb-2" />
       <header>
         <h1 className="text-2xl font-semibold">Profile</h1>
         <p className="text-sm text-muted-foreground">Manage your account settings.</p>

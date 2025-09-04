@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 type Initial = {
   profile: { username?: string; email?: string; phone?: string };
-  payment: { payoutMethod?: string; payoutEmail?: string };
+  payment: { bankName?: string; bankAccountNumber?: string };
   notifications: { productUpdates?: boolean; payouts?: boolean };
 };
 
@@ -85,8 +85,8 @@ export default function ProfileTabs({ initial }: { initial: Initial }) {
       <section className={tab === "payment" ? "space-y-4" : "space-y-4 hidden"} aria-hidden={tab !== "payment"}>
         <h2 className="text-lg font-medium">Payment information</h2>
         <PaymentForm initial={{
-          payoutMethod: initial.payment?.payoutMethod || "paypal",
-          payoutEmail: initial.payment?.payoutEmail || "",
+          bankName: initial.payment?.bankName || "",
+          bankAccountNumber: initial.payment?.bankAccountNumber || "",
         }} />
       </section>
 
@@ -279,9 +279,9 @@ function KycEntry() {
   )
 }
 
-function PaymentForm({ initial }: { initial: { payoutMethod: string; payoutEmail: string } }) {
-  const [payoutMethod, setPayoutMethod] = React.useState(initial.payoutMethod);
-  const [payoutEmail, setPayoutEmail] = React.useState(initial.payoutEmail);
+function PaymentForm({ initial }: { initial: { bankName: string; bankAccountNumber: string } }) {
+  const [bankName, setBankName] = React.useState(initial.bankName);
+  const [bankAccountNumber, setBankAccountNumber] = React.useState(initial.bankAccountNumber);
   const [loading, setLoading] = React.useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -291,7 +291,7 @@ function PaymentForm({ initial }: { initial: { payoutMethod: string; payoutEmail
       const res = await fetch("/api/me/payment", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payoutMethod, payoutEmail }),
+        body: JSON.stringify({ bankName, bankAccountNumber }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to save payment info");
@@ -306,21 +306,12 @@ function PaymentForm({ initial }: { initial: { payoutMethod: string; payoutEmail
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-2">
-        <Label htmlFor="payoutMethod">Payout method</Label>
-        <select
-          id="payoutMethod"
-          className="h-9 rounded-md border bg-background px-3 text-sm"
-          value={payoutMethod}
-          onChange={(e) => setPayoutMethod(e.target.value)}
-          disabled={loading}
-        >
-          <option value="paypal">PayPal</option>
-          <option value="bank">Bank transfer (email only)</option>
-        </select>
+        <Label htmlFor="bankName">Bank name</Label>
+        <Input id="bankName" value={bankName} onChange={(e) => setBankName(e.target.value)} disabled={loading} required />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="payoutEmail">Payout email</Label>
-        <Input id="payoutEmail" type="email" value={payoutEmail} onChange={(e) => setPayoutEmail(e.target.value)} disabled={loading} required />
+        <Label htmlFor="bankAccountNumber">Bank account number</Label>
+        <Input id="bankAccountNumber" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} disabled={loading} required />
       </div>
       <Button type="submit" disabled={loading}>
         {loading ? "Saving…" : "Save changes"}

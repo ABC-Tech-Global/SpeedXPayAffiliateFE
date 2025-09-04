@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import type { Route } from 'next'
 import { API_URL } from '@/lib/config'
 
-export type ServerCurrentUser = { id: number; username: string }
+export type ServerCurrentUser = { id: number; username: string; password_reset_required?: boolean }
 
 export async function getCurrentUser(): Promise<ServerCurrentUser | null> {
   const cookieStore = await cookies()

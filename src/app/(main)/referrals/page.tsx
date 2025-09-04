@@ -89,9 +89,9 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
 
 function formatCurrency(v: number) {
   try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(v);
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
   } catch {
-    return `$${v.toFixed(2)}`;
+    return `${Math.round(v)} ₫`;
   }
 }
 

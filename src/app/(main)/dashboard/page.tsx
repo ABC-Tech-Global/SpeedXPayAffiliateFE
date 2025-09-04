@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/server-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AnnouncementsCarousel } from "@/components/AnnouncementsCarousel";
 import Link from "next/link";
 import { headers, cookies } from "next/headers";
 
@@ -30,6 +31,9 @@ export default async function DashboardPage() {
   let onboardingCount = 0;
   let deactivatedCount = 0;
   let kycStatus: string | null = null;
+  let payoutReady = false;
+  let twofaEnabled = false;
+  let showOnboarding = true;
 
   try {
     const [pout, refAll, refAct, refOnb, refDea, kyc, prof] = await Promise.all([
@@ -56,9 +60,14 @@ export default async function DashboardPage() {
     kycStatus = kd?.kyc?.status || null;
     const profData = await prof.json().catch(() => ({}));
     const payment = profData?.payment || {};
-    const twofaEnabled = Boolean(profData?.profile?.twofaEnabled);
-    var payoutReady = Boolean(payment?.payoutMethod) && Boolean(payment?.payoutEmail);
+    twofaEnabled = Boolean(profData?.profile?.twofaEnabled);
+    payoutReady = Boolean(payment?.bankName) && Boolean(payment?.bankAccountNumber);
   } catch {}
+
+  // Hide onboarding card when required steps are done (KYC + payout details + 2FA)
+  if (kycStatus === 'approved' && payoutReady && twofaEnabled) {
+    showOnboarding = false;
+  }
 
   const totalBreakdown = [
     { label: 'Onboarding', value: onboardingCount },
@@ -99,36 +108,28 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">KYC Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm capitalize">{kycStatus || 'Not started'}</div>
-            <div className="mt-2">
-              {(!kycStatus || kycStatus === 'draft' || kycStatus === 'rejected') ? (
-                <Link href="/kyc" className="text-sm underline underline-offset-4">{kycStatus === 'rejected' ? 'Review & resubmit' : 'Start KYC'}</Link>
-              ) : (
-                <Link href="/kyc" className="text-sm underline underline-offset-4">View</Link>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Quick links</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2 text-sm">
-            <Link className="underline underline-offset-4" href="/referrals">View referrals</Link>
-            <Link className="underline underline-offset-4" href="/payouts">View payouts</Link>
-            <Link className="underline underline-offset-4" href="/profile#kyc">KYC in profile</Link>
-          </CardContent>
-        </Card>
       </section>
 
-      <OnboardingCard kycStatus={kycStatus} payoutReady={payoutReady} />
+      {/* Announcements banner */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Announcements</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AnnouncementsCarousel
+            items={[
+              "New milestone bonuses launching next month.",
+              "Leaderboard season kicks off soon — prepare to compete!",
+              "Platform improvements for faster payout processing.",
+            ]}
+            intervalMs={6000}
+          />
+        </CardContent>
+      </Card>
+
+      {showOnboarding && (
+        <OnboardingCard kycStatus={kycStatus} payoutReady={payoutReady} twofaEnabled={twofaEnabled} />
+      )}
 
       <Card>
         <CardHeader>
@@ -172,9 +173,9 @@ export default async function DashboardPage() {
 
 function formatCurrency(v: number) {
   try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(v);
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
   } catch {
-    return `$${v.toFixed(2)}`;
+    return `${Math.round(v)} ₫`;
   }
 }
 
@@ -182,10 +183,11 @@ function formatDate(iso: string) {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
 }
 
-function OnboardingCard({ kycStatus, payoutReady }: { kycStatus: string | null, payoutReady: boolean }) {
+function OnboardingCard({ kycStatus, payoutReady, twofaEnabled }: { kycStatus: string | null, payoutReady: boolean, twofaEnabled: boolean }) {
   const kycDone = kycStatus === 'approved';
+  const kycPending = kycStatus === 'pending';
   const payoutDone = payoutReady;
-  // two-factor is optional; mark as not required (we don't fetch actual 2FA here to keep server simple)
+  const twofaDone = Boolean(twofaEnabled);
   return (
     <Card>
       <CardHeader>
@@ -200,6 +202,8 @@ function OnboardingCard({ kycStatus, payoutReady }: { kycStatus: string | null, 
             </div>
             {kycDone ? (
               <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">Done</span>
+            ) : kycPending ? (
+              <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs">Pending review</span>
             ) : (
               <Link href="/kyc"><Button size="sm">{kycStatus === 'rejected' ? 'Review & resubmit' : 'Start KYC'}</Button></Link>
             )}
@@ -220,7 +224,11 @@ function OnboardingCard({ kycStatus, payoutReady }: { kycStatus: string | null, 
               <div className="font-medium">Secure account with 2FA</div>
               <div className="text-xs text-muted-foreground">Optional</div>
             </div>
-            <Link href="/profile#security"><Button size="sm" variant="outline">Set up</Button></Link>
+            {twofaDone ? (
+              <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">Done</span>
+            ) : (
+              <Link href="/profile#security"><Button size="sm" variant="outline">Set up</Button></Link>
+            )}
           </li>
         </ul>
       </CardContent>

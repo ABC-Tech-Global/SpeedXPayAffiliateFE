@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       maxAge: oneDay,
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, passwordResetRequired: Boolean(data?.passwordResetRequired) });
   } catch (err) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }

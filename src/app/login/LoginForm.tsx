@@ -34,7 +34,14 @@ export default function LoginForm({ nextHref }: Props) {
       setSuccess(true);
       // Give users brief visual feedback before redirecting
       setTimeout(() => {
-        window.location.href = nextHref;
+        const toReset = Boolean(data?.passwordResetRequired);
+        if (toReset) {
+          const u = new URL('/password-reset', window.location.origin);
+          u.searchParams.set('next', nextHref);
+          window.location.href = u.toString();
+        } else {
+          window.location.href = nextHref;
+        }
       }, 400);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Log in failed";

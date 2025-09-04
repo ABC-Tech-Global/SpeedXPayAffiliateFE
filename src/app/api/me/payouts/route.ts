@@ -12,11 +12,12 @@ export async function GET(request: Request) {
   return NextResponse.json(data, { status: res.status })
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const cookieStore = await cookies()
   const token = cookieStore.get("token")?.value || ""
   if (!token) return NextResponse.json({ error: "missing token" }, { status: 401 })
-  const res = await fetch(`${API_URL}/me/payouts/withdraw`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+  const body = await request.json().catch(() => ({}))
+  const res = await fetch(`${API_URL}/me/payouts/withdraw`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   const data = await res.json().catch(() => null)
   return NextResponse.json(data ?? { ok: res.ok }, { status: res.status })
 }
