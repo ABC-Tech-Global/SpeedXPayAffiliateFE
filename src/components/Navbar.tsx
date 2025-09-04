@@ -21,13 +21,14 @@ export default function Navbar({ user }: Props) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [kycStatus, setKycStatus] = useState<string | null>(null);
+  const [payoutReady, setPayoutReady] = useState<boolean>(false);
 
   // Close the mobile menu on route change
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
-  // Fetch KYC status for CTA
+  // Fetch onboarding statuses for CTA
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -36,6 +37,9 @@ export default function Navbar({ user }: Props) {
         const data = await res.json();
         if (!alive) return;
         setKycStatus(data?.kyc?.status || null);
+        const prof = await fetch('/api/me/profile', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}));
+        const pay = prof?.payment || {};
+        setPayoutReady(Boolean(pay?.payoutMethod) && Boolean(pay?.payoutEmail));
       } catch {}
     })();
     return () => { alive = false };
@@ -85,6 +89,16 @@ export default function Navbar({ user }: Props) {
                 >
                   Referrals
                 </Link>
+                <Link
+                  href="/payouts"
+                  className={clsx(
+                    "py-1",
+                    pathname?.startsWith("/payouts") && "text-foreground font-medium underline"
+                  )}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Payouts
+                </Link>
               </nav>
             </SheetContent>
           </Sheet>
@@ -110,13 +124,27 @@ export default function Navbar({ user }: Props) {
             >
               Referrals
             </Link>
+            <Link
+              href="/payouts"
+              className={clsx(
+                "hover:underline",
+                pathname?.startsWith("/payouts") && "text-foreground font-medium underline"
+              )}
+            >
+              Payouts
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          {/* KYC CTA: show only when no submission (not started) and not on /kyc */}
+          {/* Onboarding compact CTA */}
           {!pathname?.startsWith('/kyc') && (!kycStatus || kycStatus === null) && (
             <Link href="/kyc" className="hidden md:inline-flex">
               <Button variant="secondary" size="sm">Complete KYC</Button>
+            </Link>
+          )}
+          {kycStatus === 'approved' && !payoutReady && (
+            <Link href="/profile#payment" className="hidden md:inline-flex">
+              <Button variant="outline" size="sm">Add payout details</Button>
             </Link>
           )}
           <UserMenu user={user} />

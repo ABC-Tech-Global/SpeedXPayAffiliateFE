@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 type Initial = {
-  profile: { username?: string; fullName?: string; email?: string; phone?: string };
+  profile: { username?: string; email?: string; phone?: string };
   payment: { payoutMethod?: string; payoutEmail?: string };
   notifications: { productUpdates?: boolean; payouts?: boolean };
 };
@@ -77,7 +77,6 @@ export default function ProfileTabs({ initial }: { initial: Initial }) {
         <h2 className="text-lg font-medium">Profile information</h2>
         <ProfileForm initial={{
           username: initial.profile?.username || "",
-          fullName: initial.profile?.fullName || "",
           email: initial.profile?.email || "",
           phone: initial.profile?.phone || "",
         }} />
@@ -94,6 +93,7 @@ export default function ProfileTabs({ initial }: { initial: Initial }) {
       <section className={tab === "security" ? "space-y-4" : "space-y-4 hidden"} aria-hidden={tab !== "security"}>
         <h2 className="text-lg font-medium">Security</h2>
         <SecurityForm />
+        <TwoFASetup />
       </section>
 
       <section className={tab === "notifications" ? "space-y-4" : "space-y-4 hidden"} aria-hidden={tab !== "notifications"}>
@@ -112,18 +112,25 @@ export default function ProfileTabs({ initial }: { initial: Initial }) {
   );
 }
 
-function ProfileForm({ initial }: { initial: { username: string; fullName: string; email: string; phone: string } }) {
-  const [fullName, setFullName] = React.useState(initial.fullName);
+function ProfileForm({ initial }: { initial: { username: string; email: string; phone: string } }) {
   const [username, setUsername] = React.useState(initial.username);
   const [email, setEmail] = React.useState(initial.email);
   const [phone, setPhone] = React.useState(initial.phone);
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
+  function normalizePhone(input: string) {
+    const trimmed = input.trim();
+    const hasPlus = trimmed.startsWith('+');
+    const digits = trimmed.replace(/[^0-9]/g, '');
+    return (hasPlus ? '+' : '') + digits;
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // Normalize phone: allow spaces/dashes/parentheses; keep optional leading +
+    const normalized = phone ? normalizePhone(phone) : '';
     // Basic E.164 phone validation if provided
-    if (phone && !/^\+?[1-9]\d{6,14}$/.test(phone)) {
+    if (normalized && !/^\+?[1-9]\d{6,14}$/.test(normalized)) {
       toast.error("Invalid phone format. Use e.g. +15551234567");
       return;
     }
@@ -132,7 +139,7 @@ function ProfileForm({ initial }: { initial: { username: string; fullName: strin
       const res = await fetch("/api/me/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, fullName, email, phone }),
+        body: JSON.stringify({ username, email, phone: normalized }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to save profile");
@@ -152,10 +159,6 @@ function ProfileForm({ initial }: { initial: { username: string; fullName: strin
         <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} disabled={loading} minLength={3} />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="fullName">Full name</Label>
-        <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={loading} />
-      </div>
-      <div className="grid gap-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} required />
       </div>
@@ -165,12 +168,11 @@ function ProfileForm({ initial }: { initial: { username: string; fullName: strin
           id="phone"
           type="tel"
           inputMode="tel"
-          pattern="^\\+?[1-9]\\d{6,14}$"
-          title="Enter a valid phone number (e.g., +15551234567)"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
+          onBlur={() => setPhone((v) => normalizePhone(v))}
           disabled={loading}
-          placeholder="e.g., +15551234567"
+          placeholder="e.g., +1 555-123-4567"
         />
       </div>
       <Button type="submit" disabled={loading}>
@@ -418,5 +420,50 @@ function NotificationsForm({ initial }: { initial: { productUpdates: boolean; pa
         {loading ? "Saving…" : "Save changes"}
       </Button>
     </form>
+  );
+}
+
+function TwoFASetup() {
+  const [step, setStep] = React.useState<'idle'|'init'|'verify'|'enabled'>('idle');
+  const [otpauth, setOtpauth] = React.useState<string | null>(null);
+  const [code, setCode] = React.useState('');
+  return (
+    <div className="rounded-md border p-4 space-y-3">
+      <div className="font-medium">Two-factor authentication (2FA)</div>
+      {step === 'idle' && (
+        <Button size="sm" variant="outline" onClick={async () => {
+          setStep('init');
+          const res = await fetch('/api/me/2fa/init', { method: 'POST' });
+          const data = await res.json();
+          setOtpauth(data?.otpauth || null);
+          setStep('verify');
+        }}>Enable 2FA</Button>
+      )}
+      {step === 'verify' && (
+        <div className="space-y-2">
+          <div className="text-sm text-muted-foreground">Scan the QR in your authenticator app, then enter the 6-digit code.</div>
+          {otpauth && (
+            // Using Google Chart API for QR rendering (client fetches directly)
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={`https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(otpauth)}`} alt="2FA QR" className="h-40 w-40" />
+          )}
+          <div className="flex items-center gap-2">
+            <Input id="twofa-code" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} className="w-32" />
+            <Button size="sm" onClick={async () => {
+              const res = await fetch('/api/me/2fa/enable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+              const data = await res.json();
+              if (!res.ok) {
+                alert(data?.error || 'Invalid code');
+                return;
+              }
+              setStep('enabled');
+            }}>Verify & enable</Button>
+          </div>
+        </div>
+      )}
+      {step === 'enabled' && (
+        <div className="text-sm text-green-700">2FA enabled.</div>
+      )}
+    </div>
   );
 }
