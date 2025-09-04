@@ -18,7 +18,7 @@ cp .env.example .env.local
 ```
 
 Important:
-- `NEXT_PUBLIC_API_URL` must point to the API base URL (default `http://localhost:4000`).
+- `API_URL` (preferred) or `NEXT_PUBLIC_API_URL` must point to the API base URL (default `http://localhost:4000`).
 - `JWT_SECRET` must match between the Next.js middleware and the API.
 
 ## Run the stack

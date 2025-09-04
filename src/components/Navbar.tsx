@@ -20,11 +20,26 @@ type Props = { user?: { username: string } | null };
 export default function Navbar({ user }: Props) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [kycStatus, setKycStatus] = useState<string | null>(null);
 
   // Close the mobile menu on route change
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  // Fetch KYC status for CTA
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/me/kyc', { cache: 'no-store' });
+        const data = await res.json();
+        if (!alive) return;
+        setKycStatus(data?.kyc?.status || null);
+      } catch {}
+    })();
+    return () => { alive = false };
+  }, []);
 
   // Sheet handles focus trap; we only ensure close on route change.
 
@@ -98,6 +113,12 @@ export default function Navbar({ user }: Props) {
           </nav>
         </div>
         <div className="flex items-center gap-3">
+          {/* KYC CTA: show only when no submission (not started) and not on /kyc */}
+          {!pathname?.startsWith('/kyc') && (!kycStatus || kycStatus === null) && (
+            <Link href="/kyc" className="hidden md:inline-flex">
+              <Button variant="secondary" size="sm">Complete KYC</Button>
+            </Link>
+          )}
           <UserMenu user={user} />
         </div>
       </div>
