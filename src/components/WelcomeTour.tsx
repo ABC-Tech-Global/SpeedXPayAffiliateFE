@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api-client";
+import type { ProfileResponse } from "@/types/api";
 
 type Step = {
   title: string;
@@ -16,7 +18,7 @@ export default function WelcomeTour() {
   React.useEffect(() => {
     (async () => {
       try {
-        const prof = await fetch('/api/me/profile', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}));
+        const prof = await apiFetch<ProfileResponse>('/api/me/profile');
         const seen = Boolean(prof?.profile?.welcomeTourSeen);
         if (seen) return; // server-side flag controls visibility across devices
       } catch {}
@@ -51,7 +53,7 @@ export default function WelcomeTour() {
   const step = steps[i];
 
   async function done() {
-    try { await fetch('/api/me/tour/seen', { method: 'POST' }); } catch {}
+    try { await apiFetch('/api/me/tour/seen', { method: 'POST' }); } catch {}
     setOpen(false);
   }
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api-client";
 import { Check } from "lucide-react";
 
 type Props = { nextHref: string }
@@ -22,15 +23,10 @@ export default function LoginForm({ nextHref }: Props) {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/login`, {
+      const data = await apiFetch<{ ok: boolean; passwordResetRequired?: boolean }>(`/api/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || "Invalid credentials");
-      }
       setSuccess(true);
       // Give users brief visual feedback before redirecting
       setTimeout(() => {

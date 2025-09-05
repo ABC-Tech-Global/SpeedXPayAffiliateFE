@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api-client";
+import type { KycResponse, ProfileResponse } from "@/types/api";
 
 export default function InviteBar() {
   const [status, setStatus] = useState<string | null>(null);
@@ -10,12 +12,12 @@ export default function InviteBar() {
   useEffect(() => {
     (async () => {
       try {
-        const kd = await fetch('/api/me/kyc', { cache: 'no-store' }).then(r => r.json());
+        const kd = await apiFetch<KycResponse>('/api/me/kyc');
         const approved = kd?.kyc?.status === 'approved';
         setStatus(kd?.kyc?.status || null);
         const site = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
         // Simple referral link based on username (backend can later issue codes)
-        const me = await fetch('/api/me/profile', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+        const me = await apiFetch<ProfileResponse>('/api/me/profile').catch(() => null);
         const uname = me?.profile?.username;
         if (approved && site && uname) {
           setLink(`${site}/signup?ref=${encodeURIComponent(uname)}`);
@@ -54,4 +56,3 @@ export default function InviteBar() {
     </div>
   );
 }
-

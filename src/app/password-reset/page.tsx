@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api-client";
 
 export default function PasswordResetPage() {
   const sp = useSearchParams();
@@ -25,13 +26,10 @@ export default function PasswordResetPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/me/change-password", {
+      await apiFetch("/api/me/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword }),
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || "Failed to change password");
       toast.success("Password updated");
       setTimeout(() => {
         window.location.href = nextHref;

@@ -62,3 +62,47 @@ API: http://localhost:4000
 - `src/lib/server-auth.ts` — Server helpers to read cookie and fetch user
 - `src/components` — UI + Navbar/UserMenu
 - `server/` — Express API + Postgres
+
+## Conventions & Architecture
+
+- Data layer: Server Components call backend endpoints via helpers in `src/lib/api/me.ts`. These functions:
+  - Read the `token` from cookies and set Authorization.
+  - Use `no-store` caching and throw on non-OK responses.
+  - Return typed data defined in `src/types/api.ts`.
+
+- Client API calls: Use `apiFetch<T>()` from `src/lib/api-client.ts` in Client Components. It:
+  - Sets `no-store`, parses JSON, throws `ApiError` with a normalized message on failure.
+  - Keeps components focused on UX and removes fetch boilerplate.
+
+- UI badges: Reusable status badges live in `src/components/StatusBadges.tsx` (`StatusPill`, `OnboardingBadge`, `AccountStatusBadge`, `KycStatusBadge`).
+
+- Formatting: Use `src/lib/format.ts` for currency/date formatting; do not create ad‑hoc helpers in pages.
+
+- Routing & pagination helpers: Use `src/lib/url.ts` (`updateUrlParams`, `clampPage`, `pageButtons`) inside client-side pagination UIs.
+
+- QR codes: 2FA QR codes render locally via `src/components/QRCode.tsx` (no external network calls).
+
+## ADR: Server Data Layer (src/lib/api/me.ts)
+
+- Title: Centralize server-only backend access in `src/lib/api/me.ts`.
+- Status: Accepted (2025-09-05)
+- Context:
+  - App Router with Server Components benefits from doing data fetching on the server.
+  - Auth token is stored in HttpOnly cookie; reading it must happen on the server.
+  - Multiple pages were re-implementing similar fetch logic or calling internal Next API routes.
+- Decision:
+  - Introduce a small server-only module (`server-only`) that reads the cookie via `cookies()` and calls the upstream API (`API_URL`) directly.
+  - Export narrow, typed helpers (e.g., `getProfile`, `getPayouts`, `getReferrals`) returning shapes defined in `src/types/api.ts`.
+  - Use `cache: 'no-store'` and throw on non-OK responses to fail fast.
+  - Replace server-side calls to internal `/api/*` with these helpers to remove extra network hops and header plumbing.
+- Consequences:
+  - Pros: Consistent fetch approach, fewer moving parts in pages, better performance (one hop), safer token handling, easy for juniors to follow.
+  - Cons: Light coupling to backend REST shapes; helpers must be updated when backend changes.
+  - Testing: Logic is simple; defer unit tests to utility layers and keep helpers thin.
+- Alternatives considered:
+  - Per-page fetch + internal Next API routes: more boilerplate, extra hop, duplicated header logic.
+  - Client-only data flow: pushes secrets to client; not acceptable.
+  - tRPC/GraphQL gateway: more indirection and infra for this scope; revisit if product needs evolve.
+- Usage:
+  - In Server Components: `import { getProfile } from '@/lib/api/me'` and call directly.
+  - In Client Components: continue to call Next routes via `apiFetch<T>()` (`src/lib/api-client.ts`).

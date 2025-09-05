@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api-client";
+import type { KycResponse } from "@/types/api";
+import QRCode from "@/components/QRCode";
 
 type Initial = {
   profile: { username?: string; email?: string; phone?: string };
@@ -14,16 +17,18 @@ type Initial = {
   notifications: { productUpdates?: boolean; payouts?: boolean };
 };
 
+type Tab = "profile" | "payment" | "security" | "notifications" | "kyc";
+
 export default function ProfileTabs({ initial }: { initial: Initial }) {
   const pathname = usePathname();
-  const [tab, setTab] = React.useState<"profile" | "payment" | "security" | "notifications" | "kyc">("profile");
+  const [tab, setTab] = React.useState<Tab>("profile");
 
   // Initialize from hash and listen for changes
   React.useEffect(() => {
     const readHash = () => {
-      const h = (typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '') as any;
-      if (h === 'profile' || h === 'payment' || h === 'security' || h === 'notifications' || h === 'kyc') {
-        setTab(h);
+      const hStr = (typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '');
+      if (hStr === 'profile' || hStr === 'payment' || hStr === 'security' || hStr === 'notifications' || hStr === 'kyc') {
+        setTab(hStr as Tab);
       } else {
         // Force a canonical default hash without adding history entries
         if (typeof window !== 'undefined') {
@@ -35,15 +40,15 @@ export default function ProfileTabs({ initial }: { initial: Initial }) {
     readHash();
     window.addEventListener('hashchange', readHash);
     return () => window.removeEventListener('hashchange', readHash);
-  }, []);
+  }, [pathname]);
 
-  function goto(t: string) {
+  function goto(t: Tab) {
     // Update hash without full navigation
     if (typeof window !== 'undefined') {
       const next = `${pathname}#${t}`;
       history.replaceState(null, '', next);
       // Manually update state since hashchange may not fire with replaceState
-      setTab(t as any);
+      setTab(t);
     }
   }
 
@@ -136,13 +141,10 @@ function ProfileForm({ initial }: { initial: { username: string; email: string; 
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/me/profile", {
+      await apiFetch("/api/me/profile", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, phone: normalized }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to save profile");
       toast.success("Profile updated");
       router.refresh();
     } catch (err) {
@@ -191,8 +193,7 @@ function KycEntry() {
   React.useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/me/kyc', { cache: 'no-store' });
-        const data = await res.json();
+        const data = await apiFetch<KycResponse>('/api/me/kyc');
         const kyc = data?.kyc;
         if (kyc) {
           setStatus(kyc.status || null);
@@ -288,13 +289,10 @@ function PaymentForm({ initial }: { initial: { bankName: string; bankAccountNumb
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/me/payment", {
+      await apiFetch("/api/me/payment", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bankName, bankAccountNumber }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to save payment info");
       toast.success("Payment info updated");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save payment info");
@@ -334,13 +332,10 @@ function SecurityForm() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/me/change-password", {
+      await apiFetch("/api/me/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ oldPassword, newPassword }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to change password");
       toast.success("Password changed");
       setOldPassword("");
       setNewPassword("");
@@ -382,13 +377,10 @@ function NotificationsForm({ initial }: { initial: { productUpdates: boolean; pa
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/me/notifications", {
+      await apiFetch("/api/me/notifications", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productUpdates, payouts }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to update notifications");
       toast.success("Notifications updated");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to update notifications");
@@ -424,30 +416,27 @@ function TwoFASetup() {
       {step === 'idle' && (
         <Button size="sm" variant="outline" onClick={async () => {
           setStep('init');
-          const res = await fetch('/api/me/2fa/init', { method: 'POST' });
-          const data = await res.json();
-          setOtpauth(data?.otpauth || null);
+          const data = await apiFetch<{ otpauth?: string }>(
+            '/api/me/2fa/init',
+            { method: 'POST' }
+          );
+          setOtpauth(data?.otpauth ?? null);
           setStep('verify');
         }}>Enable 2FA</Button>
       )}
       {step === 'verify' && (
         <div className="space-y-2">
           <div className="text-sm text-muted-foreground">Scan the QR in your authenticator app, then enter the 6-digit code.</div>
-          {otpauth && (
-            // Using Google Chart API for QR rendering (client fetches directly)
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={`https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(otpauth)}`} alt="2FA QR" className="h-40 w-40" />
-          )}
+          {otpauth && <QRCode value={otpauth} size={160} className="h-40 w-40" alt="2FA setup QR" />}
           <div className="flex items-center gap-2">
             <Input id="twofa-code" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} className="w-32" />
             <Button size="sm" onClick={async () => {
-              const res = await fetch('/api/me/2fa/enable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
-              const data = await res.json();
-              if (!res.ok) {
-                alert(data?.error || 'Invalid code');
-                return;
+              try {
+                await apiFetch('/api/me/2fa/enable', { method: 'POST', body: JSON.stringify({ code }) });
+                setStep('enabled');
+              } catch (e) {
+                alert(e instanceof Error ? e.message : 'Invalid code');
               }
-              setStep('enabled');
             }}>Verify & enable</Button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import type { Route } from "next";
 
 export default function OrdersFilters() {
   const router = useRouter();
@@ -12,7 +13,7 @@ export default function OrdersFilters() {
     const url = new URL(window.location.href);
     if (v) url.searchParams.set(k, v); else url.searchParams.delete(k);
     url.searchParams.set('page', '1');
-    router.push(url.toString());
+    router.push(url.toString() as Route);
   }
 
   return (
@@ -28,4 +29,3 @@ export default function OrdersFilters() {
     </div>
   );
 }
-

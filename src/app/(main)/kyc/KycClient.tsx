@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api-client";
+import type { KycResponse } from "@/types/api";
+import { KycStatusBadge } from "@/components/StatusBadges";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_IMAGE_TYPES = [
@@ -20,20 +23,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="text-lg font-medium">{title}</h2>
       {children}
     </section>
-  );
-}
-
-function FileInput({ id, onSelected, accept }: { id: string; onSelected: (f: File) => void; accept?: string }) {
-  return (
-    <input
-      id={id}
-      type="file"
-      accept={accept || "image/*"}
-      onChange={(e) => {
-        const f = e.target.files?.[0];
-        if (f) onSelected(f);
-      }}
-    />
   );
 }
 
@@ -57,11 +46,10 @@ export default function KycClient() {
   React.useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/me/kyc', { cache: 'no-store' });
-        const data = await res.json();
+        const data = await apiFetch<KycResponse>('/api/me/kyc');
         const kyc = data?.kyc;
         if (kyc) {
-          setStatus(kyc.status);
+          setStatus(kyc.status ?? null);
           setFullName(kyc.full_name || "");
           setDob(kyc.dob ? String(kyc.dob).slice(0,10) : "");
           setGender(kyc.gender || "");
@@ -75,13 +63,10 @@ export default function KycClient() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('/api/me/kyc', {
+      await apiFetch('/api/me/kyc', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, dob, gender }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Failed to save KYC info');
       toast.success('Saved');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save');
@@ -124,9 +109,7 @@ export default function KycClient() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const res = await fetch('/api/me/kyc/submit', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Submit failed');
+      await apiFetch('/api/me/kyc/submit', { method: 'POST' });
       setStatus('pending');
       toast.success('KYC submitted');
     } catch (e) {
@@ -143,7 +126,7 @@ export default function KycClient() {
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold flex items-center gap-3">
           KYC Verification
-          <StatusBadge status={status} />
+          <KycStatusBadge status={status} />
         </h1>
       </header>
 
@@ -251,28 +234,7 @@ export default function KycClient() {
   );
 }
 
-function StatusBadge({ status }: { status: string | null }) {
-  const label = !status ? 'Not started' : (
-    status === 'draft' ? 'In progress' :
-    status === 'pending' ? 'Submitted' :
-    status === 'approved' ? 'Approved' :
-    status === 'rejected' ? 'Rejected' : status
-  );
-  const cls = !status
-    ? 'bg-muted text-foreground/80'
-    : status === 'approved'
-      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-      : status === 'pending'
-        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-        : status === 'rejected'
-          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-      {label}
-    </span>
-  );
-}
+// Status badge consolidated into shared component
 
 function IDUpload(props: {
   id: string;
@@ -284,7 +246,7 @@ function IDUpload(props: {
   setLocalPreview: (v: string | null) => void;
   has: boolean;
   setHas: (v: boolean) => void;
-  onUpload: (kind: 'id_front'|'id_back'|'selfie', file: File) => Promise<any>;
+  onUpload: (kind: 'id_front'|'id_back'|'selfie', file: File) => Promise<unknown>;
   onValidate: (file: File) => boolean;
   onRemoveSuccess: () => void;
   setLightboxSrc: (src: string | null) => void;
@@ -306,8 +268,8 @@ function IDUpload(props: {
       await onUpload(kind, file);
       setHas(true);
       toast.success(`${label} uploaded`);
-    } catch (e: any) {
-      toast.error(e?.message || 'Upload failed');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Upload failed');
     }
   }
 

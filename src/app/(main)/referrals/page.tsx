@@ -1,20 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/server-auth";
-import { headers, cookies } from "next/headers";
+import { getReferrals } from "@/lib/api/me";
 import ReferralsFilters from "./referrals-filters";
 import InviteBar from "./invite-bar";
 import ReferralsPagination from "./referrals-pagination";
+import { formatCurrency } from "@/lib/format";
+import { OnboardingBadge, AccountStatusBadge } from "@/components/StatusBadges";
 
 type Referral = { username: string; amount_processed: string; onboarding_status?: string; account_status?: string };
 
 export default async function ReferralsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireUser();
   const spObj = await searchParams;
-  const h = await headers();
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
-  const proto = h.get("x-forwarded-proto") || "http";
-  const host = h.get("host") || "localhost:3000";
   const usp = new URLSearchParams();
   if (spObj.q) usp.set('q', String(spObj.q));
   if (spObj.onboarding) usp.set('onboarding', String(spObj.onboarding));
@@ -23,14 +20,18 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
   const limit = Number(spObj.limit || 10);
   usp.set('page', String(page));
   usp.set('limit', String(limit));
-  const url = `${proto}://${host}/api/me/referrals?${usp.toString()}`;
 
   let referrals: Referral[] = [];
   let count = 0;
   try {
-    const res = await fetch(url, { cache: "no-store", headers: { Cookie: cookieHeader } });
-    const data = await res.json();
-    referrals = Array.isArray(data?.referrals) ? data.referrals : [];
+    const data = await getReferrals({
+      q: usp.get('q') || undefined,
+      onboarding: usp.get('onboarding') || undefined,
+      account: usp.get('account') || undefined,
+      page,
+      limit,
+    });
+    referrals = Array.isArray(data?.referrals) ? (data.referrals as Referral[]) : [];
     count = Number(data?.total || 0);
   } catch {}
 
@@ -87,34 +88,4 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
   );
 }
 
-function formatCurrency(v: number) {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
-  } catch {
-    return `${Math.round(v)} ₫`;
-  }
-}
-
 // pagination moved to client component
-
-function OnboardingBadge({ status }: { status: string }) {
-  const label = status;
-  const norm = status.toLowerCase();
-  const cls = norm.includes('approved') || norm.includes('completed')
-    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-    : norm.includes('bank') || norm.includes('pledge')
-      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
-}
-
-function AccountStatusBadge({ status }: { status: string }) {
-  const norm = status.toLowerCase();
-  const label = norm === 'onboarding' ? 'Onboarding' : norm === 'deactivated' ? 'Deactivated' : 'Active';
-  const cls = norm === 'active'
-    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-    : norm === 'deactivated'
-      ? 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
-}

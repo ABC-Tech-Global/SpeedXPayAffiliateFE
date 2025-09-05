@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import type { Route } from "next";
 
 export default function ReferralsFilters() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function ReferralsFilters() {
     const url = new URL(window.location.href);
     if (v) url.searchParams.set(k, v); else url.searchParams.delete(k);
     url.searchParams.set('page', '1'); // reset page on filter change
-    router.push(url.toString());
+    router.push(url.toString() as Route);
   }
 
   return (
@@ -44,4 +45,3 @@ export default function ReferralsFilters() {
     </div>
   );
 }
-

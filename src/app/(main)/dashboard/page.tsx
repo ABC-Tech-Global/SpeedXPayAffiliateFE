@@ -3,26 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AnnouncementsCarousel } from "@/components/AnnouncementsCarousel";
 import Link from "next/link";
-import { headers, cookies } from "next/headers";
+import { getKyc, getProfile, getPayouts, getReferralsAccountBreakdown } from "@/lib/api/me";
+import { formatCurrency, formatDate } from "@/lib/format";
+import type { HistoryItem } from "@/types/api";
 
-type HistoryItem = { type: string; amount: string; description: string; created_at: string };
+// use shared HistoryItem type
 
 export default async function DashboardPage() {
   const user = await requireUser();
-
-  const h = await headers();
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
-  const proto = h.get("x-forwarded-proto") || "http";
-  const host = h.get("host") || "localhost:3000";
-
-  const payoutsUrl = `${proto}://${host}/api/me/payouts?limit=5&page=1`;
-  const referralsUrl = `${proto}://${host}/api/me/referrals?limit=1&page=1`;
-  const referralsActiveUrl = `${proto}://${host}/api/me/referrals?limit=1&page=1&account=active`;
-  const referralsOnboardingUrl = `${proto}://${host}/api/me/referrals?limit=1&page=1&account=onboarding`;
-  const referralsDeactivatedUrl = `${proto}://${host}/api/me/referrals?limit=1&page=1&account=deactivated`;
-  const kycUrl = `${proto}://${host}/api/me/kyc`;
-  const profileUrl = `${proto}://${host}/api/me/profile`;
 
   let balance = 0;
   let history: HistoryItem[] = [];
@@ -36,31 +24,21 @@ export default async function DashboardPage() {
   let showOnboarding = true;
 
   try {
-    const [pout, refAll, refAct, refOnb, refDea, kyc, prof] = await Promise.all([
-      fetch(payoutsUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
-      fetch(referralsUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
-      fetch(referralsActiveUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
-      fetch(referralsOnboardingUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
-      fetch(referralsDeactivatedUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
-      fetch(kycUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
-      fetch(profileUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
+    const [pd, breakdown, kyc, prof] = await Promise.all([
+      getPayouts({ limit: 5, page: 1 }),
+      getReferralsAccountBreakdown(),
+      getKyc(),
+      getProfile(),
     ]);
-    const pd = await pout.json().catch(() => ({}));
     balance = Number(pd?.balance || 0);
     history = Array.isArray(pd?.history) ? pd.history.slice(0, 5) : [];
-    const ra = await refAll.json().catch(() => ({}));
-    totalReferrals = Number(ra?.total || 0);
-    const ract = await refAct.json().catch(() => ({}));
-    activeCount = Number(ract?.total || 0);
-    const ronb = await refOnb.json().catch(() => ({}));
-    onboardingCount = Number(ronb?.total || 0);
-    const rdea = await refDea.json().catch(() => ({}));
-    deactivatedCount = Number(rdea?.total || 0);
-    const kd = await kyc.json().catch(() => ({}));
-    kycStatus = kd?.kyc?.status || null;
-    const profData = await prof.json().catch(() => ({}));
-    const payment = profData?.payment || {};
-    twofaEnabled = Boolean(profData?.profile?.twofaEnabled);
+    totalReferrals = breakdown.total;
+    activeCount = breakdown.active;
+    onboardingCount = breakdown.onboarding;
+    deactivatedCount = breakdown.deactivated;
+    kycStatus = kyc?.kyc?.status || null;
+    const payment = prof?.payment || {};
+    twofaEnabled = Boolean(prof?.profile?.twofaEnabled);
     payoutReady = Boolean(payment?.bankName) && Boolean(payment?.bankAccountNumber);
   } catch {}
 
@@ -169,18 +147,6 @@ export default async function DashboardPage() {
       </Card>
     </div>
   );
-}
-
-function formatCurrency(v: number) {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
-  } catch {
-    return `${Math.round(v)} ₫`;
-  }
-}
-
-function formatDate(iso: string) {
-  try { return new Date(iso).toLocaleString(); } catch { return iso; }
 }
 
 function OnboardingCard({ kycStatus, payoutReady, twofaEnabled }: { kycStatus: string | null, payoutReady: boolean, twofaEnabled: boolean }) {

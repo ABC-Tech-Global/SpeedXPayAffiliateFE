@@ -1,22 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { clampPage, pageButtons, updateUrlParams } from "@/lib/url";
+import type { Route } from "next";
 
 export default function PayoutsPagination({ page, pages, limit, total }: { page: number; pages: number; limit: number; total: number }) {
   const router = useRouter();
   function goto(p: number) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('page', String(Math.max(1, Math.min(pages, p))));
-    router.push(url.toString());
+    const next = updateUrlParams(window.location.href, { page: clampPage(p, pages) });
+    router.push(next as Route);
   }
   const current = page;
   const size = limit;
-  const buttons: number[] = [];
-  const start = Math.max(1, current - 2);
-  const end = Math.min(pages, current + 2);
-  if (start > 1) buttons.push(1);
-  for (let i = start; i <= end; i++) buttons.push(i);
-  if (end < pages) buttons.push(pages);
+  const buttons = pageButtons(current, pages, 2);
 
   return (
     <div className="flex items-center justify-between gap-3 mt-4">
@@ -27,10 +23,8 @@ export default function PayoutsPagination({ page, pages, limit, total }: { page:
           className="h-8 rounded-md border bg-background px-2 text-xs"
           defaultValue={String(size)}
           onChange={(e) => {
-            const url = new URL(window.location.href);
-            url.searchParams.set('limit', e.target.value);
-            url.searchParams.set('page', '1');
-            router.push(url.toString());
+            const next = updateUrlParams(window.location.href, { limit: e.target.value, page: 1 });
+            router.push(next as Route);
           }}
         >
           <option value="10">10</option>
@@ -48,4 +42,3 @@ export default function PayoutsPagination({ page, pages, limit, total }: { page:
     </div>
   );
 }
-

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type Announcement = string | JSX.Element;
+type Announcement = string | ReactNode;
 
 export function AnnouncementsCarousel({
   items,
@@ -62,4 +62,3 @@ export function AnnouncementsCarousel({
     </div>
   );
 }
-

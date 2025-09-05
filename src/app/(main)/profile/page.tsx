@@ -1,20 +1,14 @@
 import { requireUser } from "@/lib/server-auth";
 import ProfileTabs from "./ProfileTabs";
 import BackLink from "@/components/BackLink";
-import { headers, cookies } from "next/headers";
+import { getProfile } from "@/lib/api/me";
+import type { ProfileResponse } from "@/types/api";
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  let data: any = null;
+  let data: ProfileResponse | null = null;
   try {
-    const h = await headers();
-    const cookieStore = await cookies();
-    const cookieHeader = cookieStore.toString();
-    const proto = h.get("x-forwarded-proto") || "http";
-    const host = h.get("host") || "localhost:3000";
-    const url = `${proto}://${host}/api/me/profile`;
-    const res = await fetch(url, { cache: "no-store", headers: { Cookie: cookieHeader } });
-    data = await res.json().catch(() => null as any);
+    data = await getProfile();
   } catch {}
 
   return (
@@ -25,7 +19,11 @@ export default async function ProfilePage() {
         <p className="text-sm text-muted-foreground">Manage your account settings.</p>
       </header>
 
-      <ProfileTabs initial={data ?? { profile: {}, payment: {}, notifications: {} }} />
+      <ProfileTabs initial={{
+        profile: data?.profile ?? {},
+        payment: data?.payment ?? {},
+        notifications: data?.notifications ?? {},
+      }} />
     </div>
   );
 }

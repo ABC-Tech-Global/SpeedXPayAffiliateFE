@@ -1,11 +1,20 @@
 import { requireUser } from "@/lib/server-auth";
-import { headers, cookies } from "next/headers";
-import OnboardingBadge from "../OnboardingBadge";
+import { getReferralDetail, getReferralOrders } from "@/lib/api/me";
+import { OnboardingBadge, AccountStatusBadge } from "@/components/StatusBadges";
 import BackLink from "@/components/BackLink";
 import ReferralTabsShell from "../ReferralTabsShell";
 import OrdersFilters from "./orders-filters";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 type Order = { id?: string; amount?: number | string; created_at?: string };
+type ReferralDetail = {
+  referral?: {
+    onboarding_status?: string;
+    account_status?: string;
+    amount_processed?: number | string;
+    orders_count?: number | string;
+  };
+} | null;
 
 export default async function ReferralDetailPage({ params, searchParams }: { params: { username: string }, searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireUser();
@@ -13,28 +22,13 @@ export default async function ReferralDetailPage({ params, searchParams }: { par
   const page = Number(spObj.page || 1);
   const limit = Number(spObj.limit || 10);
 
-  const h = await headers();
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
-  const proto = h.get("x-forwarded-proto") || "http";
-  const host = h.get("host") || "localhost:3000";
-
-  const usp = new URLSearchParams();
-  usp.set('page', String(page));
-  usp.set('limit', String(limit));
-
-  const detailUrl = `${proto}://${host}/api/me/referrals/${encodeURIComponent(params.username)}`;
-  const ordersUrl = `${proto}://${host}/api/me/referrals/${encodeURIComponent(params.username)}/orders?${usp.toString()}`;
-
   let orders: Order[] = [];
   let total = 0;
-  let detail: any = null;
+  let detail: ReferralDetail = null;
   try {
-    const dres = await fetch(detailUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } });
-    detail = await dres.json();
-    const res = await fetch(ordersUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } });
-    const data = await res.json();
-    orders = Array.isArray(data?.orders) ? data.orders : [];
+    detail = await getReferralDetail(params.username);
+    const data = await getReferralOrders(params.username, { page, limit });
+    orders = Array.isArray(data?.orders) ? (data.orders as Order[]) : [];
     total = Number(data?.total || 0);
   } catch {}
 
@@ -45,7 +39,7 @@ export default async function ReferralDetailPage({ params, searchParams }: { par
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Onboarding</div>
-              <div className="mt-1"><OnboardingBadge status={detail.referral.onboarding_status} /></div>
+              <div className="mt-1"><OnboardingBadge status={detail.referral.onboarding_status || 'Registered'} /></div>
             </div>
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Account</div>
@@ -108,22 +102,6 @@ export default async function ReferralDetailPage({ params, searchParams }: { par
   );
 }
 
-function formatCurrency(v: number) {
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v); } catch { return `${Math.round(v)} ₫`; }
-}
-function formatDate(iso: string) { try { return new Date(iso).toLocaleString(); } catch { return iso; } }
-
-function Tabs({ username }: { username: string }) {
-  return (
-    <div className="border-b border-border mb-4">
-      <div className="flex gap-2">
-        <a className="px-3 py-2 text-sm rounded-md hover:bg-accent/60" href={`#/overview`}>Overview</a>
-        <a className="px-3 py-2 text-sm rounded-md bg-accent text-accent-foreground" href={`#/transactions`}>Transactions</a>
-      </div>
-    </div>
-  );
-}
-
 function ReferralPagination({ page, pages }: { page: number; pages: number }) {
   const prevHref = typeof window === 'undefined' ? '#' : (() => { const url = new URL(window.location.href); url.searchParams.set('page', String(Math.max(1, page-1))); return url.toString(); })();
   const nextHref = typeof window === 'undefined' ? '#' : (() => { const url = new URL(window.location.href); url.searchParams.set('page', String(Math.min(pages, page+1))); return url.toString(); })();
@@ -134,15 +112,4 @@ function ReferralPagination({ page, pages }: { page: number; pages: number }) {
       <a className={`text-sm underline-offset-4 ${page>=pages?'pointer-events-none opacity-50':'hover:underline'}`} href={nextHref}>Next</a>
     </div>
   );
-}
-
-function AccountStatusBadge({ status }: { status: string }) {
-  const norm = (status || '').toLowerCase();
-  const label = norm === 'onboarding' ? 'Onboarding' : norm === 'deactivated' ? 'Deactivated' : 'Active';
-  const cls = norm === 'active'
-    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-    : norm === 'deactivated'
-      ? 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
 }

@@ -14,6 +14,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { apiFetch } from "@/lib/api-client";
+import type { KycResponse, ProfileResponse } from "@/types/api";
 
 type Props = { user?: { username: string } | null };
 
@@ -33,11 +35,10 @@ export default function Navbar({ user }: Props) {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch('/api/me/kyc', { cache: 'no-store' });
-        const data = await res.json();
+        const data = await apiFetch<KycResponse>('/api/me/kyc');
         if (!alive) return;
         setKycStatus(data?.kyc?.status || null);
-        const prof = await fetch('/api/me/profile', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}));
+        const prof = await apiFetch<ProfileResponse>('/api/me/profile').catch(() => ({} as ProfileResponse));
         const pay = prof?.payment || {};
         setPayoutReady(Boolean(pay?.bankName) && Boolean(pay?.bankAccountNumber));
       } catch {}

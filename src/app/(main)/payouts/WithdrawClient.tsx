@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api-client";
+import { formatCurrency } from "@/lib/format";
 
 export default function WithdrawClient({ balance, allow }: { balance: number; allow: boolean }) {
   const [loading, setLoading] = React.useState(false);
@@ -20,13 +22,12 @@ export default function WithdrawClient({ balance, allow }: { balance: number; al
     if (invalid) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/me/payouts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: parsed }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Withdraw failed');
+      await apiFetch('/api/me/payouts', { method: 'POST', body: JSON.stringify({ amount: parsed }) });
       toast.success('Withdrawal requested and pending approval');
       setAmount("");
-    } catch (e: any) {
-      toast.error(e?.message || 'Withdraw failed');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Withdraw failed';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -57,6 +58,4 @@ export default function WithdrawClient({ balance, allow }: { balance: number; al
   );
 }
 
-function formatCurrency(v: number) {
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v); } catch { return `${Math.round(v)} ₫`; }
-}
+// uses shared formatCurrency

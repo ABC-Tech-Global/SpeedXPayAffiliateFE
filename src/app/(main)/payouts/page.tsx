@@ -1,20 +1,17 @@
 import { requireUser } from "@/lib/server-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { headers, cookies } from "next/headers";
+import { getProfile, getPayouts, getWithdrawals } from "@/lib/api/me";
 import WithdrawClient from "./WithdrawClient";
 import PayoutsFilters from "./payouts-filters";
 import PayoutsPagination from "./payouts-pagination";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { StatusPill as StatusBadge } from "@/components/StatusBadges";
 
 type Tx = { type: string; amount: string; description: string; created_at: string };
 type Withdrawal = { id: number; amount: number | string; status: string; reviewer_note?: string | null; created_at?: string };
 
 export default async function PayoutsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireUser();
-  const h = await headers();
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
-  const proto = h.get("x-forwarded-proto") || "http";
-  const host = h.get("host") || "localhost:3000";
   const spObj = await searchParams;
   const usp = new URLSearchParams();
   const type = String(spObj.type || '');
@@ -23,8 +20,6 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
   const limit = Number(spObj.limit || 10);
   usp.set('page', String(page));
   usp.set('limit', String(limit));
-  const url = `${proto}://${host}/api/me/payouts?${usp.toString()}`;
-  const profileUrl = `${proto}://${host}/api/me/profile`;
 
   let balance = 0;
   let history: Tx[] = [];
@@ -32,20 +27,17 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
   let allowWithdraw = false;
   let withdrawals: Withdrawal[] = [];
   try {
-    const [res, prof, wres] = await Promise.all([
-      fetch(url, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
-      fetch(profileUrl, { cache: 'no-store', headers: { Cookie: cookieHeader } }),
-      fetch(`${proto}://${host}/api/me/withdrawals?limit=10&page=1`, { cache: 'no-store', headers: { Cookie: cookieHeader } })
+    const [payouts, prof, wres] = await Promise.all([
+      getPayouts({ page, limit, type: type || undefined }),
+      getProfile(),
+      getWithdrawals({ page: 1, limit: 10 }),
     ]);
-    const data = await res.json();
-    balance = Number(data?.balance || 0);
-    history = Array.isArray(data?.history) ? data.history : [];
-    total = Number(data?.total || 0);
-    const profData = await prof.json().catch(() => ({}));
-    const payout = profData?.payment || {};
+    balance = Number(payouts?.balance || 0);
+    history = Array.isArray(payouts?.history) ? payouts.history as unknown as Tx[] : [];
+    total = Number(payouts?.total || 0);
+    const payout = prof?.payment || {};
     allowWithdraw = Boolean(payout?.bankName) && Boolean(payout?.bankAccountNumber);
-    const wd = await wres.json().catch(() => ({}));
-    withdrawals = Array.isArray(wd?.withdrawals) ? wd.withdrawals : [];
+    withdrawals = Array.isArray(wres?.withdrawals) ? (wres.withdrawals as Withdrawal[]) : [];
   } catch {}
 
   return (
@@ -141,27 +133,4 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
       </Card>
     </div>
   );
-}
-
-function formatCurrency(v: number) {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
-  } catch {
-    return `${Math.round(v)} ₫`;
-  }
-}
-
-function formatDate(iso: string) {
-  try { return new Date(iso).toLocaleString(); } catch { return iso; }
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const norm = status.toLowerCase();
-  const label = norm === 'approved' ? 'Approved' : norm === 'rejected' ? 'Rejected' : 'Pending';
-  const cls = norm === 'approved'
-    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-    : norm === 'rejected'
-      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
 }
