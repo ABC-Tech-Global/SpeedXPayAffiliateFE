@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 
-export default function PasswordResetPage() {
+function PasswordResetInner() {
   const sp = useSearchParams();
   const nextHref = useMemo(() => sp.get("next") || "/dashboard", [sp]);
   const [newPassword, setNewPassword] = useState("");
@@ -83,5 +83,13 @@ export default function PasswordResetPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function PasswordResetPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen grid place-items-center p-6">Loading…</div>}>
+      <PasswordResetInner />
+    </Suspense>
   );
 }

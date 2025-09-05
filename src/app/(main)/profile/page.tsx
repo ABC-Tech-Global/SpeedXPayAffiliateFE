@@ -5,7 +5,7 @@ import { getProfile } from "@/lib/api/me";
 import type { ProfileResponse } from "@/types/api";
 
 export default async function ProfilePage() {
-  const user = await requireUser();
+  await requireUser();
   let data: ProfileResponse | null = null;
   try {
     data = await getProfile();

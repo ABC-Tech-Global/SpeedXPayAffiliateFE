@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
+import { LoginSchema } from "@/lib/schemas";
 import { Check } from "lucide-react";
 
 type Props = { nextHref: string }
@@ -23,9 +24,17 @@ export default function LoginForm({ nextHref }: Props) {
     setLoading(true);
 
     try {
+      // Validate client-side before submitting
+      const parsed = LoginSchema.safeParse({ username, password });
+      if (!parsed.success) {
+        const msg = parsed.error.issues[0]?.message || "Invalid input";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
       const data = await apiFetch<{ ok: boolean; passwordResetRequired?: boolean }>(`/api/login`, {
         method: "POST",
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(parsed.data),
       });
       setSuccess(true);
       // Give users brief visual feedback before redirecting

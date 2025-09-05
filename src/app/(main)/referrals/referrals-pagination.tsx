@@ -6,7 +6,7 @@ import type { Route } from "next";
 
 export default function ReferralsPagination({ page, pages, limit, total }: { page: number; pages: number; limit: number; total: number }) {
   const router = useRouter();
-  const sp = useSearchParams();
+  useSearchParams();
   function goto(p: number) {
     const next = updateUrlParams(window.location.href, { page: clampPage(p, pages) });
     router.push(next as Route);

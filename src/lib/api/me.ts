@@ -5,11 +5,8 @@ import { API_URL } from '@/lib/config'
 import type {
   ProfileResponse,
   KycResponse,
-  HistoryItem,
   PayoutsResponse,
-  Withdrawal,
   WithdrawalsResponse,
-  Referral,
   ReferralsResponse,
   ReferralDetailResponse,
   ReferralOrdersResponse,

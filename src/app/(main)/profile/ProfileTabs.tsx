@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import type { KycResponse } from "@/types/api";
 import QRCode from "@/components/QRCode";
+import { ProfileUpdateSchema, PaymentUpdateSchema, ChangePasswordSchema, NotificationsUpdateSchema, TwoFAEnableSchema } from "@/lib/schemas";
 
 type Initial = {
   profile: { username?: string; email?: string; phone?: string };
@@ -134,16 +135,13 @@ function ProfileForm({ initial }: { initial: { username: string; email: string; 
     e.preventDefault();
     // Normalize phone: allow spaces/dashes/parentheses; keep optional leading +
     const normalized = phone ? normalizePhone(phone) : '';
-    // Basic E.164 phone validation if provided
-    if (normalized && !/^\+?[1-9]\d{6,14}$/.test(normalized)) {
-      toast.error("Invalid phone format. Use e.g. +15551234567");
-      return;
-    }
+    const parsed = ProfileUpdateSchema.safeParse({ username, email, phone: normalized });
+    if (!parsed.success) { toast.error(parsed.error.issues[0]?.message || 'Invalid input'); return; }
     setLoading(true);
     try {
       await apiFetch("/api/me/profile", {
         method: "PUT",
-        body: JSON.stringify({ username, email, phone: normalized }),
+        body: JSON.stringify(parsed.data),
       });
       toast.success("Profile updated");
       router.refresh();
@@ -188,7 +186,6 @@ function KycEntry() {
   const router = useRouter();
   const [status, setStatus] = React.useState<string | null>(null);
   const [reason, setReason] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
     (async () => {
@@ -287,11 +284,13 @@ function PaymentForm({ initial }: { initial: { bankName: string; bankAccountNumb
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const parsed = PaymentUpdateSchema.safeParse({ bankName, bankAccountNumber });
+    if (!parsed.success) { toast.error(parsed.error.issues[0]?.message || 'Invalid input'); return; }
     setLoading(true);
     try {
       await apiFetch("/api/me/payment", {
         method: "PUT",
-        body: JSON.stringify({ bankName, bankAccountNumber }),
+        body: JSON.stringify(parsed.data),
       });
       toast.success("Payment info updated");
     } catch (err) {
@@ -330,11 +329,13 @@ function SecurityForm() {
       toast.error("Passwords do not match");
       return;
     }
+    const parsed = ChangePasswordSchema.safeParse({ oldPassword, newPassword });
+    if (!parsed.success) { toast.error(parsed.error.issues[0]?.message || 'Invalid input'); return; }
     setLoading(true);
     try {
       await apiFetch("/api/me/change-password", {
         method: "POST",
-        body: JSON.stringify({ oldPassword, newPassword }),
+        body: JSON.stringify(parsed.data),
       });
       toast.success("Password changed");
       setOldPassword("");
@@ -375,11 +376,13 @@ function NotificationsForm({ initial }: { initial: { productUpdates: boolean; pa
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const parsed = NotificationsUpdateSchema.safeParse({ productUpdates, payouts });
+    if (!parsed.success) { toast.error(parsed.error.issues[0]?.message || 'Invalid input'); return; }
     setLoading(true);
     try {
       await apiFetch("/api/me/notifications", {
         method: "PUT",
-        body: JSON.stringify({ productUpdates, payouts }),
+        body: JSON.stringify(parsed.data),
       });
       toast.success("Notifications updated");
     } catch (e) {
@@ -432,7 +435,9 @@ function TwoFASetup() {
             <Input id="twofa-code" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} className="w-32" />
             <Button size="sm" onClick={async () => {
               try {
-                await apiFetch('/api/me/2fa/enable', { method: 'POST', body: JSON.stringify({ code }) });
+                const parsed = TwoFAEnableSchema.safeParse({ code });
+                if (!parsed.success) { alert(parsed.error.issues[0]?.message || 'Invalid code'); return; }
+                await apiFetch('/api/me/2fa/enable', { method: 'POST', body: JSON.stringify(parsed.data) });
                 setStep('enabled');
               } catch (e) {
                 alert(e instanceof Error ? e.message : 'Invalid code');

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/format";
+import { WithdrawRequestSchema } from "@/lib/schemas";
 
 export default function WithdrawClient({ balance, allow }: { balance: number; allow: boolean }) {
   const [loading, setLoading] = React.useState(false);
@@ -22,7 +23,13 @@ export default function WithdrawClient({ balance, allow }: { balance: number; al
     if (invalid) return;
     setLoading(true);
     try {
-      await apiFetch('/api/me/payouts', { method: 'POST', body: JSON.stringify({ amount: parsed }) });
+      // Client-side validation with shared schema
+      const check = WithdrawRequestSchema.safeParse({ amount: parsed });
+      if (!check.success) {
+        toast.error(check.error.issues[0]?.message || 'Invalid amount');
+        return;
+      }
+      await apiFetch('/api/me/payouts', { method: 'POST', body: JSON.stringify(check.data) });
       toast.success('Withdrawal requested and pending approval');
       setAmount("");
     } catch (e: unknown) {

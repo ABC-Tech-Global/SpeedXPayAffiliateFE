@@ -21,6 +21,7 @@ export default function QRCode({ value, size = 200, className, alt = "QR code" }
 
   if (!url) return null;
 
+  // Using <img> intentionally for data URL; Next Image not required here
+  // eslint-disable-next-line @next/next/no-img-element
   return <img src={url} alt={alt} width={size} height={size} className={className} />;
 }
-

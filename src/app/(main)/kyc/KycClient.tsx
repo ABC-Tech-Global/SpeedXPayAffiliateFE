@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import type { KycResponse } from "@/types/api";
 import { KycStatusBadge } from "@/components/StatusBadges";
+import { KycUpdateSchema } from "@/lib/schemas";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_IMAGE_TYPES = [
@@ -63,9 +64,11 @@ export default function KycClient() {
     e.preventDefault();
     setLoading(true);
     try {
+      const parsed = KycUpdateSchema.safeParse({ fullName, dob, gender });
+      if (!parsed.success) { toast.error(parsed.error.issues[0]?.message || 'Invalid input'); setLoading(false); return; }
       await apiFetch('/api/me/kyc', {
         method: 'POST',
-        body: JSON.stringify({ fullName, dob, gender }),
+        body: JSON.stringify(parsed.data),
       });
       toast.success('Saved');
     } catch (e) {

@@ -97,7 +97,7 @@ export default async function ReferralDetailPage({ params, searchParams }: { par
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Referral: {params.username}</h1>
       </header>
-      <ReferralTabsShell username={params.username} overview={overview} transactions={transactions} />
+      <ReferralTabsShell overview={overview} transactions={transactions} />
     </div>
   );
 }

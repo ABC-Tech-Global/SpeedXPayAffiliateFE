@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { API_URL } from "@/lib/config"
+import { KycUpdateSchema, parseJson, validationError } from "@/lib/validation"
+import { ZodError } from "zod"
 
 export async function GET() {
   const cookieStore = await cookies()
@@ -15,13 +17,17 @@ export async function POST(request: Request) {
   const cookieStore = await cookies()
   const token = cookieStore.get("token")?.value || ""
   if (!token) return NextResponse.json({ error: "missing token" }, { status: 401 })
-  const body = await request.json().catch(() => ({}))
-  const res = await fetch(`${API_URL}/me/kyc`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(body)
-  })
-  const data = await res.json().catch(() => null)
-  return NextResponse.json(data ?? { ok: res.ok }, { status: res.status })
+  try {
+    const body = await parseJson(request, KycUpdateSchema)
+    const res = await fetch(`${API_URL}/me/kyc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body)
+    })
+    const data = await res.json().catch(() => null)
+    return NextResponse.json(data ?? { ok: res.ok }, { status: res.status })
+  } catch (err) {
+    if (err instanceof ZodError) return validationError(err)
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  }
 }
-

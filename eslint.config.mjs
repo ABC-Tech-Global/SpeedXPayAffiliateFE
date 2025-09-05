@@ -21,6 +21,19 @@ const eslintConfig = [
       "server/**",
     ],
   },
+  {
+    files: ["src/__tests__/**/*.*", "src/**/*.test.*"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

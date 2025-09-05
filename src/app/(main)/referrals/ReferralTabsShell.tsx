@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-export default function ReferralTabsShell({ username, overview, transactions }: { username: string; overview: React.ReactNode; transactions: React.ReactNode }) {
+export default function ReferralTabsShell({ overview, transactions }: { overview: React.ReactNode; transactions: React.ReactNode }) {
   const [tab, setTab] = React.useState<'overview'|'transactions'>('overview');
   React.useEffect(() => {
     const read = () => {

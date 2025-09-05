@@ -5,15 +5,12 @@ import { AnnouncementsCarousel } from "@/components/AnnouncementsCarousel";
 import Link from "next/link";
 import { getKyc, getProfile, getPayouts, getReferralsAccountBreakdown } from "@/lib/api/me";
 import { formatCurrency, formatDate } from "@/lib/format";
-import type { HistoryItem } from "@/types/api";
-
-// use shared HistoryItem type
 
 export default async function DashboardPage() {
   const user = await requireUser();
 
   let balance = 0;
-  let history: HistoryItem[] = [];
+  let history: import('@/types/api').HistoryItem[] = [];
   let totalReferrals = 0;
   let activeCount = 0;
   let onboardingCount = 0;
@@ -31,7 +28,7 @@ export default async function DashboardPage() {
       getProfile(),
     ]);
     balance = Number(pd?.balance || 0);
-    history = Array.isArray(pd?.history) ? pd.history.slice(0, 5) : [];
+    history = Array.isArray(pd?.history) ? pd.history.slice(0, 5) : ([] as import('@/types/api').HistoryItem[]);
     totalReferrals = breakdown.total;
     activeCount = breakdown.active;
     onboardingCount = breakdown.onboarding;
