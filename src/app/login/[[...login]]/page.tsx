@@ -7,18 +7,19 @@ export const metadata: Metadata = {
 }
 
 type Props = {
-  params: { login?: string[] }
+  params: Promise<{ login?: string[] }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function LoginPage({ params, searchParams }: Props) {
   const spObj = await searchParams
+  const p = await params
   const usp = new URLSearchParams()
   for (const [k, v] of Object.entries(spObj)) {
     if (typeof v === 'string') usp.set(k, v)
     else if (Array.isArray(v)) v.forEach((vv) => usp.append(k, vv))
   }
-  const path = params.login?.length ? `/${params.login.join('/')}` : "/"
+  const path = p.login?.length ? `/${p.login.join('/')}` : "/"
   const target = path === "/" ? "/dashboard" : path
   const search = usp.toString() ? `?${usp.toString()}` : ""
   const nextHref = `${target}${search}`

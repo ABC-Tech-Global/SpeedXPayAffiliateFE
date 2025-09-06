@@ -1,9 +1,9 @@
 import { requireUser } from "@/lib/server-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getProfile, getPayouts, getWithdrawals } from "@/lib/api/me";
-import WithdrawClient from "./WithdrawClient";
-import PayoutsFilters from "./payouts-filters";
-import PayoutsPagination from "./payouts-pagination";
+import WithdrawClient from "@/features/payouts/components/WithdrawClient";
+import PayoutsFilters from "@/features/payouts/components/PayoutsFilters";
+import PayoutsPagination from "@/features/payouts/components/PayoutsPagination";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { StatusPill as StatusBadge } from "@/components/StatusBadges";
 

@@ -139,12 +139,7 @@ export default function Navbar({ user }: Props) {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          {/* Onboarding compact CTA */}
-          {!pathname?.startsWith('/kyc') && (!kycStatus || kycStatus === null) && (
-            <Link href="/kyc" className="hidden md:inline-flex">
-              <Button variant="secondary" size="sm">Complete KYC</Button>
-            </Link>
-          )}
+          {/* Removed 'Complete KYC' CTA per request */}
           {kycStatus === 'approved' && !payoutReady && (
             <Link href="/profile#payment" className="hidden md:inline-flex">
               <Button variant="outline" size="sm">Add payout details</Button>

@@ -4,8 +4,8 @@ export type BasicUser = { id: number; username: string };
 
 export async function createUser(username: string, passwordHash: string) {
   const { rows } = await pool.query(
-    `INSERT INTO users(username, password_hash)
-     VALUES($1, $2)
+    `INSERT INTO users(username, password_hash, password_reset_required)
+     VALUES($1, $2, true)
      ON CONFLICT (username) DO NOTHING
      RETURNING id, username, password_hash, created_at`,
     [username, passwordHash]

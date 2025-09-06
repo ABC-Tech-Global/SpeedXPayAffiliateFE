@@ -5,6 +5,7 @@ import { AnnouncementsCarousel } from "@/components/AnnouncementsCarousel";
 import Link from "next/link";
 import { getKyc, getProfile, getPayouts, getReferralsAccountBreakdown } from "@/lib/api/me";
 import { formatCurrency, formatDate } from "@/lib/format";
+import CurrentTime from "@/components/CurrentTime";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -54,8 +55,12 @@ export default async function DashboardPage() {
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Welcome back, {user.username}</h1>
-        <div className="text-xs text-muted-foreground">{new Date().toLocaleString()}</div>
+        <CurrentTime className="text-xs text-muted-foreground" />
       </div>
+
+      {showOnboarding && (
+        <OnboardingCard kycStatus={kycStatus} payoutReady={payoutReady} twofaEnabled={twofaEnabled} />
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -102,9 +107,7 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      {showOnboarding && (
-        <OnboardingCard kycStatus={kycStatus} payoutReady={payoutReady} twofaEnabled={twofaEnabled} />
-      )}
+      
 
       <Card>
         <CardHeader>
@@ -152,7 +155,7 @@ function OnboardingCard({ kycStatus, payoutReady, twofaEnabled }: { kycStatus: s
   const payoutDone = payoutReady;
   const twofaDone = Boolean(twofaEnabled);
   return (
-    <Card>
+    <Card className="bg-muted/50">
       <CardHeader>
         <CardTitle>Onboarding progress</CardTitle>
       </CardHeader>

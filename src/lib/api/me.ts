@@ -28,8 +28,14 @@ async function getJSON<T = Json>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { ...(init?.headers || {}), ...headers },
   })
+  console.log(`getJSON: Response status for ${path}: ${res.status}`);
   let data: unknown = null
-  try { data = await res.json() } catch {}
+  try {
+    data = await res.json()
+    console.log(`getJSON: Parsed JSON data for ${path}:`, data);
+  } catch (e) {
+    console.warn(`getJSON: Failed to parse JSON for ${path}:`, e);
+  }
   if (!res.ok) {
     const obj = (data as Record<string, unknown>) || {}
     const msg = (typeof obj.error === 'string' && obj.error)

@@ -73,15 +73,11 @@ function sanitize(u: UserRow) {
   return { id: u.id, username: u.username, created_at: u.created_at };
 }
 
-export async function changePassword(userId: number, oldPassword: string, newPassword: string) {
+export async function changePassword(userId: number, _oldPassword: string, newPassword: string) {
   if (newPassword.length < 6) throw new Error("password must be at least 6 characters");
   const user = (await usersRepo.findUserById(userId)) as UserRow | null;
   if (!user) throw new Error("user not found");
-  const mustReset = Boolean(user.password_reset_required);
-  if (!mustReset) {
-    const ok = await bcrypt.compare(oldPassword, user.password_hash);
-    if (!ok) throw new Error("invalid old password");
-  }
+  // Old password verification is intentionally skipped per product requirements.
   const newHash = await bcrypt.hash(newPassword, 10);
   await usersRepo.updatePassword(userId, newHash, true);
   return { ok: true } as const;

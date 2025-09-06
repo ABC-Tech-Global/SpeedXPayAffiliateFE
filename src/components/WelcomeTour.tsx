@@ -10,44 +10,46 @@ type Step = {
   body: React.ReactNode;
 };
 
-export default function WelcomeTour() {
-  const [open, setOpen] = React.useState(false);
-  const [steps, setSteps] = React.useState<Step[]>([]);
+// Build steps synchronously so SSR can render the overlay content.
+function buildSteps(): Step[] {
+  return [
+    {
+      title: 'Welcome to SpeedXPay Affiliate Portal',
+      body: <p className="text-sm text-muted-foreground">Welcome to your affiliate hub.</p>,
+    },
+    {
+      title: 'Earn on Every Transaction',
+      body: <p className="text-sm text-muted-foreground">Share your unique link and earn a commission whenever someone you refer completes a transaction.</p>,
+    },
+    {
+      title: 'Unlock Special Rewards',
+      body: <p className="text-sm text-muted-foreground">Hit your monthly goals and all-time targets to unlock special bonuses.</p>,
+    },
+    {
+      title: 'Compete and Win',
+      body: <p className="text-sm text-muted-foreground">Climb the leaderboards and compete with top affiliates for even greater rewards.</p>,
+    },
+  ];
+}
+
+export default function WelcomeTour({ initialOpen }: { initialOpen?: boolean }) {
+  const [open, setOpen] = React.useState<boolean>(Boolean(initialOpen));
+  const steps = React.useMemo<Step[]>(buildSteps, []);
   const [i, setI] = React.useState(0);
 
+  // If no server hint was provided, fall back to client check.
   React.useEffect(() => {
+    if (typeof initialOpen !== 'undefined') return;
     (async () => {
       try {
         const prof = await apiFetch<ProfileResponse>('/api/me/profile');
         const seen = Boolean(prof?.profile?.welcomeTourSeen);
-        if (seen) return; // server-side flag controls visibility across devices
-      } catch {}
-      const s: Step[] = [];
-      // Step 1: Welcome and value props
-      s.push({
-        title: 'Welcome to SpeedXPay Affiliate Portal',
-        body: <p className="text-sm text-muted-foreground">Welcome to your affiliate hub.</p>,
-      });
-      // Step 2: Earn on Every Transaction
-      s.push({
-        title: 'Earn on Every Transaction',
-        body: <p className="text-sm text-muted-foreground">Share your unique link and earn a commission whenever someone you refer completes a transaction.</p>,
-      });
-      // Step 3: Unlock Special Rewards
-      s.push({
-        title: 'Unlock Special Rewards',
-        body: <p className="text-sm text-muted-foreground">Hit your monthly goals and all-time targets to unlock special bonuses.</p>,
-      });
-      // Step 4: Compete and Win
-      s.push({
-        title: 'Compete and Win',
-        body: <p className="text-sm text-muted-foreground">Climb the leaderboards and compete with top affiliates for even greater rewards.</p>,
-      });
-
-      setSteps(s);
-      setOpen(true);
+        if (!seen) setOpen(true);
+      } catch {
+        // In case of error, do nothing; keep default closed to avoid accidental overlay.
+      }
     })();
-  }, []);
+  }, [initialOpen]);
 
   if (!open || steps.length === 0) return null;
   const step = steps[i];

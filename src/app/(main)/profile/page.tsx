@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/server-auth";
-import ProfileTabs from "./ProfileTabs";
+import ProfileTabs from "@/features/profile/components/ProfileTabs";
 import BackLink from "@/components/BackLink";
 import { getProfile } from "@/lib/api/me";
 import type { ProfileResponse } from "@/types/api";

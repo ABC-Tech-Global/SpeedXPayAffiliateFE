@@ -318,7 +318,6 @@ function PaymentForm({ initial }: { initial: { bankName: string; bankAccountNumb
 }
 
 function SecurityForm() {
-  const [oldPassword, setOldPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -329,7 +328,7 @@ function SecurityForm() {
       toast.error("Passwords do not match");
       return;
     }
-    const parsed = ChangePasswordSchema.safeParse({ oldPassword, newPassword });
+    const parsed = ChangePasswordSchema.safeParse({ newPassword });
     if (!parsed.success) { toast.error(parsed.error.issues[0]?.message || 'Invalid input'); return; }
     setLoading(true);
     try {
@@ -338,7 +337,6 @@ function SecurityForm() {
         body: JSON.stringify(parsed.data),
       });
       toast.success("Password changed");
-      setOldPassword("");
       setNewPassword("");
       setConfirm("");
     } catch (e) {
@@ -350,10 +348,6 @@ function SecurityForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="grid gap-2">
-        <Label htmlFor="oldPassword">Current password</Label>
-        <Input id="oldPassword" type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} disabled={loading} required />
-      </div>
       <div className="grid gap-2">
         <Label htmlFor="newPassword">New password</Label>
         <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={loading} required minLength={6} />

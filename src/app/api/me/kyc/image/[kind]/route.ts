@@ -7,14 +7,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ kin
   const cookieStore = await cookies()
   const token = cookieStore.get("token")?.value || ""
   if (!token) return new Response(JSON.stringify({ error: "missing token" }), { status: 401 })
-
-  const upstream = await fetch(`${API_URL}/me/kyc/image/${kind}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store',
-  })
-
-  const headers = new Headers()
-  const ct = upstream.headers.get('content-type') || 'application/octet-stream'
-  headers.set('content-type', ct)
-  return new Response(upstream.body, { status: upstream.status, headers })
+  const res = await fetch(`${API_URL}/me/kyc/image/${kind}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+  const data = await res.json().catch(() => null)
+  if (!res.ok || !data?.url) return new Response(JSON.stringify({ error: data?.error || 'not found' }), { status: res.status })
+  return Response.redirect(data.url, 302)
 }

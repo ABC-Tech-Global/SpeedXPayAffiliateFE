@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/server-auth";
 import { getReferrals } from "@/lib/api/me";
-import ReferralsFilters from "./referrals-filters";
-import InviteBar from "./invite-bar";
-import ReferralsPagination from "./referrals-pagination";
+import ReferralsFilters from "@/features/referrals/components/ReferralsFilters";
+import InviteBar from "@/features/referrals/components/InviteBar";
+import ReferralsPagination from "@/features/referrals/components/ReferralsPagination";
 import { formatCurrency } from "@/lib/format";
 import { OnboardingBadge, AccountStatusBadge } from "@/components/StatusBadges";
 
@@ -23,16 +23,21 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
 
   let referrals: Referral[] = [];
   let count = 0;
+  let kycStatus: string | null = null;
   try {
-    const data = await getReferrals({
-      q: usp.get('q') || undefined,
-      onboarding: usp.get('onboarding') || undefined,
-      account: usp.get('account') || undefined,
-      page,
-      limit,
-    });
-    referrals = Array.isArray(data?.referrals) ? (data.referrals as Referral[]) : [];
-    count = Number(data?.total || 0);
+    const [referralsData, kycData] = await Promise.all([
+      getReferrals({
+        q: usp.get('q') || undefined,
+        onboarding: usp.get('onboarding') || undefined,
+        account: usp.get('account') || undefined,
+        page,
+        limit,
+      }),
+      getKyc(),
+    ]);
+    referrals = Array.isArray(referralsData?.referrals) ? (referralsData.referrals as Referral[]) : [];
+    count = Number(referralsData?.total || 0);
+    kycStatus = kycData?.kyc?.status || null;
   } catch {}
 
   const totalAmount = referrals.reduce((sum, r) => sum + Number(r.amount_processed || 0), 0);
@@ -40,7 +45,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <InviteBar />
+      <InviteBar kycStatus={kycStatus} />
       <Card>
         <CardHeader>
           <CardTitle>Referrals</CardTitle>
@@ -87,5 +92,3 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
     </div>
   );
 }
-
-// pagination moved to client component
