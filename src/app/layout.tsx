@@ -13,10 +13,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = (() => {
+  const v = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!v && process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_SITE_URL must be set in production");
+  }
+  return v || "http://localhost:3000";
+})();
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-  ),
+  metadataBase: new URL(SITE_URL),
   title: {
     template: "%s | SPXA",
     default: "SPXA",

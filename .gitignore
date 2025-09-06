@@ -42,6 +42,8 @@ next-env.d.ts
 
 # Others
 .contexts
-server
+server/uploads
+server/node_modules
+server/dist
 AGENTS.md
 docker-compose.yml

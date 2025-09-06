@@ -17,9 +17,35 @@ cp .env.example .env.local
 # If running API outside docker, also create server/.env accordingly
 ```
 
+For production, start from the provided examples and fill in real values:
+
+```bash
+cp .env.production.example .env.production
+cp server/.env.production.example server/.env.production
+```
+
 Important:
 - `API_URL` (preferred) or `NEXT_PUBLIC_API_URL` must point to the API base URL (default `http://localhost:4000`).
 - `JWT_SECRET` must match between the Next.js middleware and the API.
+
+## Production Checklist
+
+- Env: set `NODE_ENV=production` for both app and API.
+- Secrets:
+  - `JWT_SECRET` set and identical in app and `server/`.
+  - API URL set via `API_URL` (or `NEXT_PUBLIC_API_URL`) in the app.
+  - Site URL set via `NEXT_PUBLIC_SITE_URL` (e.g., `https://app.example.com`).
+- Database:
+  - Provide `DATABASE_URL` (preferred) or full `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME` in API.
+  - If your Postgres requires TLS, append `sslmode=require` to `DATABASE_URL`.
+- CORS: set `CORS_ORIGIN` in API to your site origin (e.g., `https://app.example.com`).
+- Cookies: secure cookies are enabled automatically in prod (`secure: true`).
+- Build & run:
+  - App: `npm ci && npm run build && npm start` (port 3000).
+  - API: `cd server && npm ci && npm run build && npm start` (port 4000).
+- Health checks (API): `GET /health` and `GET /db/health`.
+- Storage: persist `server/uploads/` if using KYC/image uploads.
+- Docker: pass env via platform secrets; ensure the above variables are provided at runtime.
 
 ## Run the stack
 

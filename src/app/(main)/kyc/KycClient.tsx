@@ -10,7 +10,7 @@ import type { KycResponse } from "@/types/api";
 import { KycStatusBadge } from "@/components/StatusBadges";
 import { KycUpdateSchema } from "@/lib/schemas";
 
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -94,7 +94,7 @@ export default function KycClient() {
       return false;
     }
     if (file.size > MAX_IMAGE_SIZE) {
-      toast.error('File too large. Max 10MB.');
+      toast.error('File too large. Max 3MB.');
       return false;
     }
     return true;
@@ -162,7 +162,7 @@ export default function KycClient() {
 
       <Section title="ID document uploads">
         {!disabled && (
-          <p className="text-xs text-muted-foreground mb-2">Accepted file types: JPG, PNG, HEIC. Maximum size: 10MB per image.</p>
+          <p className="text-xs text-muted-foreground mb-2">Accepted file types: JPG, PNG, HEIC. Maximum size: 3MB per image.</p>
         )}
         <div className="grid sm:grid-cols-3 gap-4">
           <IDUpload
@@ -303,7 +303,7 @@ function IDUpload(props: {
           }}
         >
           <p className="text-muted-foreground">Drag & drop or click to upload</p>
-          <p className="text-xs text-muted-foreground mt-1">JPG, PNG, HEIC up to 10MB</p>
+          <p className="text-xs text-muted-foreground mt-1">JPG, PNG, HEIC up to 3MB</p>
         </div>
       )}
 
