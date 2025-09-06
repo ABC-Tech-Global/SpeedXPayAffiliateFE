@@ -20,7 +20,8 @@ describe('apiFetch', () => {
   })
 
   it('throws ApiError with message from JSON error', async () => {
-    ;(global.fetch as any).mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: 'Bad' }) })
+    // Provide the same mocked response for both calls in this test
+    ;(global.fetch as any).mockResolvedValue({ ok: false, status: 400, json: async () => ({ error: 'Bad' }) })
     await expect(apiFetch('https://api.test/x')).rejects.toThrowError(ApiError)
     try { await apiFetch('https://api.test/x') } catch (e) {
       expect(e).toBeInstanceOf(ApiError)
