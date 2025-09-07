@@ -9,6 +9,7 @@ import * as referralsRepo from "./repos/referrals";
 import * as ledgerRepo from "./repos/ledger";
 import * as historyRepo from "./repos/history";
 import * as withdrawalsRepo from "./repos/withdrawals";
+import * as ordersRepo from "./repos/orders";
 import { createHmac, randomBytes } from "crypto";
 import { openapiSpec } from "./openapi";
 import swaggerUi from "swagger-ui-express";
@@ -614,7 +615,8 @@ app.get("/me/referrals/:username/orders", async (req, res) => {
     const linked = await referralsRepo.linkExists(payload.sub, referred.id);
     if (!linked) return res.status(404).json({ error: "not found" });
 
-    const { rows, total } = await ordersRepo.listReferralOrdersForUser(referred.id, { limit, offset });
+    const rows = await ordersRepo.listReferralOrdersForUser(referred.id, { limit, offset });
+    const { total } = await ordersRepo.countReferralOrdersForUser(referred.id);
     res.json({ orders: rows, total, page, limit });
   } catch (e) {
     res.status(400).json({ error: "Invalid request" });
