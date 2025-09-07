@@ -38,7 +38,7 @@ export async function getUserMe(id: number) {
 
 export async function getProfile(id: number) {
   const { rows } = await pool.query(
-    `SELECT id, username, email, phone, bank_name, bank_account_number, notify_product_updates, notify_payouts, twofa_enabled, welcome_tour_seen FROM users WHERE id = $1 LIMIT 1`,
+    `SELECT id, username, email, phone, notify_product_updates, notify_payouts, twofa_enabled, welcome_tour_seen FROM users WHERE id = $1 LIMIT 1`,
     [id]
   );
   return rows[0] || null;
@@ -57,14 +57,7 @@ export async function updateProfile(id: number, email: string, phone: string) {
   await pool.query(`UPDATE users SET email = $1, phone = $2 WHERE id = $3`, [email, phone, id]);
 }
 
-export async function getPayment(id: number) {
-  const { rows } = await pool.query(`SELECT bank_name, bank_account_number FROM users WHERE id = $1`, [id]);
-  return rows[0] || null;
-}
-
-export async function updatePayment(id: number, bankName: string, bankAccountNumber: string) {
-  await pool.query(`UPDATE users SET bank_name = $1, bank_account_number = $2 WHERE id = $3`, [bankName, bankAccountNumber, id]);
-}
+// Deprecated: payment now managed via bank_accounts table (see repos/bank-accounts)
 
 export async function getNotifications(id: number) {
   const { rows } = await pool.query(`SELECT notify_product_updates, notify_payouts FROM users WHERE id = $1`, [id]);
@@ -112,4 +105,8 @@ export async function updatePassword(userId: number, passwordHash: string, clear
   } else {
     await pool.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [passwordHash, userId]);
   }
+}
+
+export async function setAccountStatus(id: number, status: string) {
+  await pool.query(`UPDATE users SET account_status=$1 WHERE id=$2`, [status, id]);
 }

@@ -36,6 +36,7 @@ export const TwoFAEnableSchema = z.object({
 
 export const WithdrawRequestSchema = z.object({
   amount: z.number().int().positive(),
+  bankAccountId: z.number().int().positive().optional(),
 }).strict()
 
 export const KycUpdateSchema = z.object({

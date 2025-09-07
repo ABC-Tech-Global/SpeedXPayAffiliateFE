@@ -79,3 +79,53 @@ export async function insertReferral(referrerId: number, referredId: number, amo
   );
   return rows[0]?.id as number;
 }
+
+// Detail + orders helpers used by routes
+export async function getReferralDetail(referrerId: number, referredUsername: string, limit: number, offset: number) {
+  const detailRes = await pool.query(
+    `SELECT u.username,
+            r.amount_processed,
+            COALESCE(r.onboarding_status,
+              CASE WHEN EXISTS (SELECT 1 FROM kyc_submissions ks WHERE ks.user_id = r.referred_id AND ks.status = 'approved') THEN 'Completed KYC' ELSE 'Registered' END
+            ) AS onboarding_status,
+            u.account_status,
+            r.referred_id
+     FROM referrals r
+     JOIN users u ON u.id = r.referred_id
+     WHERE r.referrer_id = $1 AND LOWER(u.username) = LOWER($2)
+     LIMIT 1`,
+    [referrerId, referredUsername]
+  );
+  const detailRow = detailRes.rows[0];
+  if (!detailRow) return { detail: null, orders: [], totalOrders: 0 } as const;
+  const referredId = Number(detailRow.referred_id);
+  // Orders for referred user
+  const countRes = await pool.query(`SELECT COUNT(*) AS c FROM referral_orders WHERE referred_id=$1`, [referredId]);
+  const totalOrders = Number(countRes.rows[0]?.c || 0);
+  const ordersRes = await pool.query(
+    `SELECT id, order_id, amount, created_at FROM referral_orders WHERE referred_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+    [referredId, limit, offset]
+  );
+  const { referred_id, ...detail } = detailRow;
+  return { detail, orders: ordersRes.rows, totalOrders } as const;
+}
+
+export async function getReferralOrders(referrerId: number, referredUsername: string, limit: number, offset: number) {
+  const u = await pool.query(
+    `SELECT r.referred_id AS id
+     FROM referrals r JOIN users u ON u.id = r.referred_id
+     WHERE r.referrer_id=$1 AND LOWER(u.username)=LOWER($2)
+     LIMIT 1`,
+    [referrerId, referredUsername]
+  );
+  const row = u.rows[0];
+  if (!row) return { orders: [], total: 0 } as const;
+  const referredId = Number(row.id);
+  const countRes = await pool.query(`SELECT COUNT(*) AS c FROM referral_orders WHERE referred_id=$1`, [referredId]);
+  const total = Number(countRes.rows[0]?.c || 0);
+  const ordersRes = await pool.query(
+    `SELECT id, order_id, amount, created_at FROM referral_orders WHERE referred_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+    [referredId, limit, offset]
+  );
+  return { orders: ordersRes.rows, total } as const;
+}

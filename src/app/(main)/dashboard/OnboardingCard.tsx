@@ -3,17 +3,20 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { getKyc } from "@/lib/api/kyc";
 import { getProfile } from "@/lib/api/users";
+import { getBankAccounts } from "@/lib/api/bank-accounts";
+import AddBankDialogButton from "@/features/onboarding/components/AddBankDialogButton";
+import TwofaDialogButton from "@/features/onboarding/components/TwofaDialogButton";
 
 export default async function OnboardingCard() {
   let kycStatus: string | null = null;
   let payoutReady = false;
   let twofaEnabled = false;
   try {
-    const [kyc, prof] = await Promise.all([getKyc(), getProfile()]);
+    const [kyc, prof, ba] = await Promise.all([getKyc(), getProfile(), getBankAccounts()]);
     kycStatus = kyc?.kyc?.status || null;
-    const payment = prof?.payment || {};
+    const accounts = Array.isArray((ba as any)?.accounts) ? (ba as any).accounts : [];
     twofaEnabled = Boolean(prof?.profile?.twofaEnabled);
-    payoutReady = Boolean(payment?.bankName) && Boolean(payment?.bankAccountNumber);
+    payoutReady = accounts.length > 0;
   } catch {}
 
   // If all onboarding steps are done, render nothing
@@ -52,7 +55,7 @@ export default async function OnboardingCard() {
             {payoutDone ? (
               <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">Done</span>
             ) : (
-              <Link href="/profile#payment"><Button size="sm" variant="outline">Add details</Button></Link>
+              <AddBankDialogButton />
             )}
           </li>
           <li className="flex items-center justify-between">
@@ -63,7 +66,7 @@ export default async function OnboardingCard() {
             {twofaDone ? (
               <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">Done</span>
             ) : (
-              <Link href="/profile#security"><Button size="sm" variant="outline">Set up</Button></Link>
+              <TwofaDialogButton />
             )}
           </li>
         </ul>

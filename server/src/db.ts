@@ -67,8 +67,34 @@ export async function migrate() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS twofa_tmp_secret TEXT;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_tour_seen BOOLEAN NOT NULL DEFAULT false;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_required BOOLEAN NOT NULL DEFAULT false;`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name TEXT;`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number TEXT;`);
+  // Ensure bank_accounts exists before migrating away from inline columns
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bank_accounts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      bank_name TEXT NOT NULL,
+      account_number TEXT NOT NULL,
+      is_default BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_bank_accounts_user ON bank_accounts(user_id);`);
+  // Migrate existing inline bank fields to bank_accounts if present
+  await pool.query(`
+    DO $$ BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='users' AND column_name='bank_name'
+      ) THEN
+        INSERT INTO bank_accounts (user_id, bank_name, account_number, is_default)
+        SELECT id, bank_name, bank_account_number, true FROM users
+        WHERE COALESCE(bank_name,'') <> '' OR COALESCE(bank_account_number,'') <> '';
+      END IF;
+    END $$;
+  `);
+  // Migrate away from inline bank columns on users
+  await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS bank_name;`);
+  await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS bank_account_number;`);
   // Clean up deprecated payout fields
   await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS payout_method;`);
   await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS payout_email;`);
@@ -162,4 +188,20 @@ export async function migrate() {
     );
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_withdrawal_user ON withdrawal_requests(user_id);`);
+
+  // Bank accounts (multiple per user)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bank_accounts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      bank_name TEXT NOT NULL,
+      account_number TEXT NOT NULL,
+      is_default BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_bank_accounts_user ON bank_accounts(user_id);`);
+
+  // Link withdrawals to a bank account if provided
+  await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS bank_account_id INTEGER REFERENCES bank_accounts(id);`);
 }

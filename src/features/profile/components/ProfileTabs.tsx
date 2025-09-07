@@ -4,7 +4,7 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import ProfileTab from "./tabs/ProfileTab";
-import PaymentTab from "./tabs/PaymentTab";
+import BankAccountsTab from "./tabs/BankAccountsTab";
 import SecurityTab from "./tabs/SecurityTab";
 import NotificationsTab from "./tabs/NotificationsTab";
 import KycTab from "./tabs/KycTab";
@@ -69,10 +69,7 @@ export default function ProfileTabs({ initial }: { initial: Initial }) {
 
       <section className={clsx("space-y-4", tab !== "payment" && "hidden")} aria-hidden={tab !== "payment"}>
         <h2 className="text-lg font-medium">Payment information</h2>
-        <PaymentTab initial={{
-          bankName: initial.payment?.bankName || "",
-          bankAccountNumber: initial.payment?.bankAccountNumber || "",
-        }} />
+        <BankAccountsTab />
       </section>
 
       <section className={clsx("space-y-4", tab !== "security" && "hidden")} aria-hidden={tab !== "security"}>

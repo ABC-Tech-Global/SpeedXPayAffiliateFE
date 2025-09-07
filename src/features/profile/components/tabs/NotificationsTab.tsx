@@ -11,13 +11,14 @@ import { useTwofaPrompt } from "@/features/profile/hooks/useTwofaPrompt";
 export default function NotificationsTab({ initial }: { initial: { productUpdates: boolean; payouts: boolean } }) {
   const [productUpdates, setProductUpdates] = React.useState(initial.productUpdates);
   const [payouts, setPayouts] = React.useState(initial.payouts);
+  const [base, setBase] = React.useState({ productUpdates: initial.productUpdates, payouts: initial.payouts });
   const [loading, setLoading] = React.useState(false);
 
   const { withTwofa, DialogUI } = useTwofaPrompt();
   const isDirty = React.useMemo(() => (
-    Boolean(productUpdates) !== Boolean(initial.productUpdates) ||
-    Boolean(payouts) !== Boolean(initial.payouts)
-  ), [productUpdates, payouts, initial.productUpdates, initial.payouts]);
+    Boolean(productUpdates) !== Boolean(base.productUpdates) ||
+    Boolean(payouts) !== Boolean(base.payouts)
+  ), [productUpdates, payouts, base.productUpdates, base.payouts]);
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const parsed = NotificationsUpdateSchema.safeParse({ productUpdates, payouts });
@@ -28,6 +29,7 @@ export default function NotificationsTab({ initial }: { initial: { productUpdate
         await apiFetch("/api/users/notifications", { method: "PUT", headers, body: JSON.stringify(parsed.data) });
       });
       toast.success("Notifications updated");
+      setBase({ productUpdates, payouts });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to update notifications");
     } finally {

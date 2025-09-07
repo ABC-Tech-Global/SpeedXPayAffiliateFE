@@ -11,6 +11,7 @@ export const openapiSpec = {
   components: {
     securitySchemes: {
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+      adminToken: { type: "apiKey", in: "header", name: "x-admin-token", description: "Admin token (set ADMIN_TOKEN env)" },
     },
     schemas: {
       Health: {
@@ -41,9 +42,25 @@ export const openapiSpec = {
       },
     },
   },
+  tags: [
+    { name: "Health", description: "Health checks" },
+    { name: "Auth", description: "Authentication endpoints" },
+    { name: "Users", description: "User info" },
+    { name: "Profile", description: "Profile details" },
+    { name: "Payment", description: "Payment info (default bank)" },
+    { name: "Bank Accounts", description: "Manage user bank accounts" },
+    { name: "Notifications", description: "Notification preferences" },
+    { name: "Payouts", description: "Payouts and history" },
+    { name: "Withdrawals", description: "Withdrawal requests" },
+    { name: "2FA", description: "Two-factor authentication" },
+    { name: "KYC", description: "Know Your Customer" },
+    { name: "Referrals", description: "Referrals and orders" },
+    { name: "Admin", description: "Admin endpoints" },
+  ],
   paths: {
     "/health": {
       get: {
+        tags: ["Health"],
         summary: "API health",
         responses: {
           200: { description: "OK", content: { "application/json": { schema: { $ref: "#/components/schemas/Health" } } } },
@@ -52,6 +69,7 @@ export const openapiSpec = {
     },
     "/db/health": {
       get: {
+        tags: ["Health"],
         summary: "Database health",
         responses: {
           200: { description: "DB OK", content: { "application/json": { schema: { $ref: "#/components/schemas/Health" } } } },
@@ -61,6 +79,7 @@ export const openapiSpec = {
     },
     "/users": {
       get: {
+        tags: ["Users"],
         summary: "List users",
         responses: {
           200: {
@@ -72,6 +91,7 @@ export const openapiSpec = {
     },
     "/auth/register": {
       post: {
+        tags: ["Auth"],
         summary: "Register user",
         requestBody: {
           required: true,
@@ -85,6 +105,7 @@ export const openapiSpec = {
     },
     "/auth/login": {
       post: {
+        tags: ["Auth"],
         summary: "Login",
         requestBody: {
           required: true,
@@ -98,6 +119,7 @@ export const openapiSpec = {
     },
     "/me": {
       get: {
+        tags: ["Users"],
         summary: "Current user",
         security: [{ bearerAuth: [] }],
         responses: {
@@ -121,6 +143,7 @@ export const openapiSpec = {
     },
     "/users/me": {
       get: {
+        tags: ["Users"],
         summary: "Current user (alias)",
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
@@ -128,11 +151,13 @@ export const openapiSpec = {
     },
     "/me/profile": {
       get: {
+        tags: ["Profile"],
         summary: "Get profile",
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
       },
       put: {
+        tags: ["Profile"],
         summary: "Update profile",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -144,11 +169,13 @@ export const openapiSpec = {
     },
     "/users/me/profile": {
       get: {
+        tags: ["Profile"],
         summary: "Get profile (alias)",
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
       },
       put: {
+        tags: ["Profile"],
         summary: "Update profile (alias)",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -160,11 +187,13 @@ export const openapiSpec = {
     },
     "/me/payment": {
       get: {
+        tags: ["Payment"],
         summary: "Get payment info",
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
       },
       put: {
+        tags: ["Payment"],
         summary: "Update payment info",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -176,11 +205,13 @@ export const openapiSpec = {
     },
     "/users/me/payment": {
       get: {
+        tags: ["Payment"],
         summary: "Get payment info (alias)",
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
       },
       put: {
+        tags: ["Payment"],
         summary: "Update payment info (alias)",
         security: [{ bearerAuth: [] }],
         parameters: [ { name: "x-2fa-code", in: "header", required: false, schema: { type: "string", pattern: "^\\d{6}$" } } ],
@@ -190,11 +221,13 @@ export const openapiSpec = {
     },
     "/me/notifications": {
       get: {
+        tags: ["Notifications"],
         summary: "Get notification prefs",
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
       },
       put: {
+        tags: ["Notifications"],
         summary: "Update notification prefs",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -206,11 +239,13 @@ export const openapiSpec = {
     },
     "/users/me/notifications": {
       get: {
+        tags: ["Notifications"],
         summary: "Get notification prefs (alias)",
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
       },
       put: {
+        tags: ["Notifications"],
         summary: "Update notification prefs (alias)",
         security: [{ bearerAuth: [] }],
         parameters: [ { name: "x-2fa-code", in: "header", required: false, schema: { type: "string", pattern: "^\\d{6}$" } } ],
@@ -223,6 +258,7 @@ export const openapiSpec = {
     },
     "/me/withdrawals": {
       get: {
+        tags: ["Withdrawals"],
         summary: "List withdrawals",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -235,6 +271,7 @@ export const openapiSpec = {
     },
     "/withdrawals": {
       get: {
+        tags: ["Withdrawals"],
         summary: "List withdrawals (alias)",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -247,6 +284,7 @@ export const openapiSpec = {
     },
     "/me/payouts": {
       get: {
+        tags: ["Payouts"],
         summary: "Payouts summary + history",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -259,6 +297,7 @@ export const openapiSpec = {
     },
     "/payouts": {
       get: {
+        tags: ["Payouts"],
         summary: "Payouts summary + history (alias)",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -271,19 +310,91 @@ export const openapiSpec = {
     },
     "/me/payouts/withdraw": {
       post: {
+        tags: ["Withdrawals"],
         summary: "Create withdrawal request",
         security: [{ bearerAuth: [] }],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { amount: { type: "number" } }, required: ["amount"] } } } },
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { amount: { type: "number" }, bankAccountId: { type: "integer", nullable: true } }, required: ["amount"] } } } },
         responses: { 200: { description: "OK" }, 400: { description: "Invalid" }, 401: { description: "Unauthorized" } },
       },
     },
     "/payouts/withdraw": {
       post: {
+        tags: ["Withdrawals"],
         summary: "Create withdrawal request (alias)",
         security: [{ bearerAuth: [] }],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { amount: { type: "number" } }, required: ["amount"] } } } },
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { amount: { type: "number" }, bankAccountId: { type: "integer", nullable: true } }, required: ["amount"] } } } },
         responses: { 200: { description: "OK" }, 400: { description: "Invalid" }, 401: { description: "Unauthorized" } },
       },
+    },
+    
+    // Bank Accounts
+    "/me/bank-accounts": {
+      get: { tags: ["Bank Accounts"], summary: "List bank accounts", security: [{ bearerAuth: [] }], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
+      post: {
+        tags: ["Bank Accounts"],
+        summary: "Add bank account",
+        security: [{ bearerAuth: [] }],
+        parameters: [ { name: "x-2fa-code", in: "header", required: false, schema: { type: "string", pattern: "^\\d{6}$" }, description: "TOTP if 2FA enabled" } ],
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { bankName: { type: "string" }, accountNumber: { type: "string" }, makeDefault: { type: "boolean" } }, required: ["bankName","accountNumber"] } } } },
+        responses: { 200: { description: "OK" }, 400: { description: "Invalid" }, 401: { description: "Unauthorized" } },
+      },
+    },
+    "/users/me/bank-accounts": {
+      get: { tags: ["Bank Accounts"], summary: "List bank accounts (alias)", security: [{ bearerAuth: [] }], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
+      post: { tags: ["Bank Accounts"], summary: "Add bank account (alias)", security: [{ bearerAuth: [] }], parameters: [ { name: "x-2fa-code", in: "header", required: false, schema: { type: "string" } } ], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
+    },
+    "/me/bank-accounts/{id}/default": {
+      post: { tags: ["Bank Accounts"], summary: "Set default bank account", security: [{ bearerAuth: [] }], parameters: [ { name: "id", in: "path", required: true, schema: { type: "integer" } }, { name: "x-2fa-code", in: "header", required: false, schema: { type: "string" } } ], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
+    },
+    "/users/me/bank-accounts/{id}/default": {
+      post: { tags: ["Bank Accounts"], summary: "Set default bank account (alias)", security: [{ bearerAuth: [] }], parameters: [ { name: "id", in: "path", required: true, schema: { type: "integer" } } ], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
+    },
+    "/me/bank-accounts/{id}": {
+      delete: { tags: ["Bank Accounts"], summary: "Remove bank account", security: [{ bearerAuth: [] }], parameters: [ { name: "id", in: "path", required: true, schema: { type: "integer" } }, { name: "x-2fa-code", in: "header", required: false, schema: { type: "string" } } ], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
+    },
+    "/users/me/bank-accounts/{id}": {
+      delete: { tags: ["Bank Accounts"], summary: "Remove bank account (alias)", security: [{ bearerAuth: [] }], parameters: [ { name: "id", in: "path", required: true, schema: { type: "integer" } } ], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
+    },
+
+    // Admin
+    "/admin/users": {
+      post: {
+        tags: ["Admin"],
+        summary: "Admin: create a new user",
+        security: [],
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { username: { type: "string" }, password: { type: "string" } }, required: ["username","password"] } } } },
+        responses: { 201: { description: "Created" }, 400: { description: "Invalid" }, 401: { description: "Unauthorized" } },
+      },
+    },
+    "/admin/seed": {
+      post: {
+        tags: ["Admin"],
+        summary: "Admin: seed users",
+        security: [],
+        requestBody: { required: false, content: { "application/json": { schema: { type: "object", properties: { count: { type: "integer", minimum: 1, maximum: 100 }, prefix: { type: "string" }, password: { type: "string" } } } } } },
+        responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
+      },
+    },
+    "/admin/kyc/{username}/approve": {
+      post: { tags: ["Admin"], summary: "Admin: approve latest KYC for user", parameters: [ { name: "username", in: "path", required: true, schema: { type: "string" } } ], responses: { 200: { description: "OK" }, 404: { description: "Not found" } } },
+    },
+    "/admin/kyc/{username}/reject": {
+      post: { tags: ["Admin"], summary: "Admin: reject latest KYC for user", parameters: [ { name: "username", in: "path", required: true, schema: { type: "string" } } ], requestBody: { required: false, content: { "application/json": { schema: { type: "object", properties: { reason: { type: "string" } } } } } }, responses: { 200: { description: "OK" }, 404: { description: "Not found" } } },
+    },
+    "/admin/referrals/link": {
+      post: { tags: ["Admin"], summary: "Admin: link referral", requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { referrer: { type: "string" }, referred: { type: "string" } }, required: ["referrer","referred"] } } } }, responses: { 200: { description: "OK" } } },
+    },
+    "/admin/referral-orders": {
+      post: { tags: ["Admin"], summary: "Admin: add referral order for a referred user", requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { referred: { type: "string" }, amount: { type: "number" }, orderId: { type: "string" } }, required: ["referred","amount"] } } } }, responses: { 200: { description: "OK" } } },
+    },
+    "/admin/users/{username}/status": {
+      post: { tags: ["Admin"], summary: "Admin: set user account status", parameters: [ { name: "username", in: "path", required: true, schema: { type: "string" } } ], requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { status: { type: "string" } }, required: ["status"] } } } }, responses: { 200: { description: "OK" } } },
+    },
+    "/admin/withdrawals": {
+      get: { tags: ["Admin"], summary: "Admin: list withdrawals across users", parameters: [ { name: "page", in: "query", schema: { type: "integer", minimum: 1 } }, { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 200 } }, { name: "status", in: "query", schema: { type: "string", enum: ["pending","approved","rejected"] } } ], responses: { 200: { description: "OK" } } },
+    },
+    "/admin/withdrawals/{id}/status": {
+      post: { tags: ["Admin"], summary: "Admin: update withdrawal status", parameters: [ { name: "id", in: "path", required: true, schema: { type: "integer" } } ], requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { status: { type: "string", enum: ["pending","approved","rejected"] }, note: { type: "string" } }, required: ["status"] } } } }, responses: { 200: { description: "OK" } } },
     },
     "/me/2fa/init": {
       post: {
@@ -297,6 +408,7 @@ export const openapiSpec = {
     },
     "/me/2fa/enable": {
       post: {
+        tags: ["2FA"],
         summary: "Enable 2FA with verification code",
         security: [{ bearerAuth: [] }],
         requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { code: { type: "string", pattern: "^\\d{6}$" } }, required: ["code"] } } } },
@@ -305,6 +417,7 @@ export const openapiSpec = {
     },
     "/users/me/2fa/enable": {
       post: {
+        tags: ["2FA"],
         summary: "Enable 2FA (alias)", security: [{ bearerAuth: [] }],
         requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { code: { type: "string", pattern: "^\\d{6}$" } }, required: ["code"] } } } },
         responses: { 200: { description: "OK" }, 400: { description: "Invalid" }, 401: { description: "Unauthorized" } },
@@ -312,6 +425,7 @@ export const openapiSpec = {
     },
     "/me/2fa/disable": {
       post: {
+        tags: ["2FA"],
         summary: "Disable 2FA",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -322,6 +436,7 @@ export const openapiSpec = {
     },
     "/users/me/2fa/disable": {
       post: {
+        tags: ["2FA"],
         summary: "Disable 2FA (alias)",
         security: [{ bearerAuth: [] }],
         parameters: [ { name: "x-2fa-code", in: "header", required: false, schema: { type: "string", pattern: "^\\d{6}$" } } ],
@@ -330,13 +445,14 @@ export const openapiSpec = {
     },
     "/me/2fa": {
       get: {
+        tags: ["2FA"],
         summary: "Get 2FA details",
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
       },
     },
     "/users/me/2fa": {
-      get: { summary: "Get 2FA details (alias)", security: [{ bearerAuth: [] }], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
+      get: { tags: ["2FA"], summary: "Get 2FA details (alias)", security: [{ bearerAuth: [] }], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
     },
     
     "/kyc/me": {
@@ -357,10 +473,11 @@ export const openapiSpec = {
     },
     
     "/referrals": {
-      get: { summary: "List referrals (alias)", security: [{ bearerAuth: [] }], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
+      get: { tags: ["Referrals"], summary: "List referrals (alias)", security: [{ bearerAuth: [] }], responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } } },
     },
     "/referrals/{username}": {
       get: {
+        tags: ["Referrals"],
         summary: "Referral detail (alias)",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "username", in: "path", required: true, schema: { type: "string" } }],
@@ -369,6 +486,7 @@ export const openapiSpec = {
     },
     "/referrals/{username}/orders": {
       get: {
+        tags: ["Referrals"],
         summary: "Referral orders (alias)",
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -407,6 +525,7 @@ export const openapiSpec = {
     },
     "/me/kyc/upload": {
       post: {
+        tags: ["KYC"],
         summary: "Save KYC upload blob path",
         security: [{ bearerAuth: [] }],
         requestBody: {
@@ -418,6 +537,7 @@ export const openapiSpec = {
     },
     "/me/kyc/upload/{kind}": {
       delete: {
+        tags: ["KYC"],
         summary: "Clear and delete uploaded blob",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "kind", in: "path", required: true, schema: { type: "string", enum: ["id_front","id_back","selfie"] } }],
@@ -426,6 +546,7 @@ export const openapiSpec = {
     },
     "/me/kyc/image/{kind}": {
       get: {
+        tags: ["KYC"],
         summary: "Get public URL for uploaded image",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "kind", in: "path", required: true, schema: { type: "string", enum: ["id_front","id_back","selfie"] } }],

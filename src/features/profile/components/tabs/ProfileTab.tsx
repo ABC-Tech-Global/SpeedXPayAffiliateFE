@@ -14,6 +14,7 @@ export default function ProfileTab({ initial }: { initial: { username: string; e
   const [username, setUsername] = React.useState(initial.username);
   const [email, setEmail] = React.useState(initial.email);
   const [phone, setPhone] = React.useState(initial.phone);
+  const [base, setBase] = React.useState({ username: initial.username, email: initial.email, phone: initial.phone });
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
 
@@ -25,15 +26,15 @@ export default function ProfileTab({ initial }: { initial: { username: string; e
   }
 
   const { withTwofa, DialogUI } = useTwofaPrompt();
-  const initialNormalizedPhone = React.useMemo(() => (initial.phone ? normalizePhone(initial.phone) : ''), []);
+  const initialNormalizedPhone = React.useMemo(() => (base.phone ? normalizePhone(base.phone) : ''), [base.phone]);
   const isDirty = React.useMemo(() => {
     const currentNormPhone = phone ? normalizePhone(phone) : '';
     return (
-      username.trim() !== (initial.username || '').trim() ||
-      email.trim() !== (initial.email || '').trim() ||
+      username.trim() !== (base.username || '').trim() ||
+      email.trim() !== (base.email || '').trim() ||
       currentNormPhone !== initialNormalizedPhone
     );
-  }, [username, email, phone, initialNormalizedPhone, initial.username, initial.email]);
+  }, [username, email, phone, initialNormalizedPhone, base.username, base.email]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -46,6 +47,7 @@ export default function ProfileTab({ initial }: { initial: { username: string; e
         await apiFetch("/api/users/profile", { method: "PUT", headers, body: JSON.stringify(parsed.data) });
       });
       toast.success("Profile updated");
+      setBase({ username, email, phone: normalized });
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save profile");

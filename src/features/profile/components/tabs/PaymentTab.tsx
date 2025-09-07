@@ -9,16 +9,17 @@ import { apiFetch } from "@/lib/api-client";
 import { PaymentUpdateSchema } from "@/lib/schemas";
 import { useTwofaPrompt } from "@/features/profile/hooks/useTwofaPrompt";
 
-export default function PaymentTab({ initial }: { initial: { bankName: string; bankAccountNumber: string } }) {
+export default function PaymentTab({ initial, onSaved }: { initial: { bankName: string; bankAccountNumber: string }; onSaved?: () => void }) {
   const [bankName, setBankName] = React.useState(initial.bankName);
   const [bankAccountNumber, setBankAccountNumber] = React.useState(initial.bankAccountNumber);
+  const [base, setBase] = React.useState({ bankName: initial.bankName, bankAccountNumber: initial.bankAccountNumber });
   const [loading, setLoading] = React.useState(false);
 
   const { withTwofa, DialogUI } = useTwofaPrompt();
   const isDirty = React.useMemo(() => (
-    (bankName || '').trim() !== (initial.bankName || '').trim() ||
-    (bankAccountNumber || '').trim() !== (initial.bankAccountNumber || '').trim()
-  ), [bankName, bankAccountNumber, initial.bankName, initial.bankAccountNumber]);
+    (bankName || '').trim() !== (base.bankName || '').trim() ||
+    (bankAccountNumber || '').trim() !== (base.bankAccountNumber || '').trim()
+  ), [bankName, bankAccountNumber, base.bankName, base.bankAccountNumber]);
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const parsed = PaymentUpdateSchema.safeParse({ bankName, bankAccountNumber });
@@ -29,6 +30,8 @@ export default function PaymentTab({ initial }: { initial: { bankName: string; b
         await apiFetch("/api/users/payment", { method: "PUT", headers, body: JSON.stringify(parsed.data) });
       });
       toast.success("Payment info updated");
+      setBase({ bankName, bankAccountNumber });
+      onSaved?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save payment info");
     } finally {
