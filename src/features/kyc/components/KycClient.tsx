@@ -60,7 +60,7 @@ export default function KycClient() {
       </header>
 
       <Section title="Personal information">
-        <form onSubmit={(e) => { e.preventDefault(); void saveInfo(); }} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-4">
           <div className="grid gap-2">
             <Label htmlFor="fullName">Full name (as on ID)</Label>
             <Input
@@ -89,10 +89,6 @@ export default function KycClient() {
               disabled={disabled || loading}
             />
           </div>
-          {/* Automatically saves on blur/change, or add explicit save button */}
-          <Button type="submit" disabled={disabled || loading}>
-             {loading ? 'Saving...' : 'Save Information'}
-          </Button>
         </form>
       </Section>
 

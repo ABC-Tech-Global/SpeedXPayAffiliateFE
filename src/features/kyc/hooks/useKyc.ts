@@ -50,9 +50,9 @@ function kycReducer(state: KycState, action: KycAction): KycState {
         gender: (kyc?.gender as 'male' | 'female' | '') || "",
         status: 'idle',
         images: { // Pre-populate with URLs that will trigger a fetch
-          id_front: kyc?.has_id_front ? `/api/me/kyc/image/id_front?v=${Date.now()}` : null,
-          id_back: kyc?.has_id_back ? `/api/me/kyc/image/id_back?v=${Date.now()}` : null,
-          selfie: kyc?.has_selfie ? `/api/me/kyc/image/selfie?v=${Date.now()}` : null,
+          id_front: kyc?.has_id_front ? `/api/kyc/image/id_front?v=${Date.now()}` : null,
+          id_back: kyc?.has_id_back ? `/api/kyc/image/id_back?v=${Date.now()}` : null,
+          selfie: kyc?.has_selfie ? `/api/kyc/image/selfie?v=${Date.now()}` : null,
         },
       };
     }
@@ -79,7 +79,7 @@ export function useKyc(router: AppRouterInstance) {
 
   React.useEffect(() => {
     console.count("useKyc useEffect");
-    apiFetch<KycResponse>('/api/me/kyc')
+    apiFetch<KycResponse>('/api/kyc')
       .then(data => {
         if (data.kyc) {
           dispatch({ type: 'SET_INITIAL_DATA', payload: data.kyc });
@@ -108,7 +108,7 @@ export function useKyc(router: AppRouterInstance) {
         toast.error(parsed.error.issues[0]?.message || 'Invalid input');
         return;
       }
-      await apiFetch('/api/me/kyc', {
+      await apiFetch('/api/kyc', {
         method: 'POST',
         body: JSON.stringify(parsed.data),
       });
@@ -126,19 +126,19 @@ export function useKyc(router: AppRouterInstance) {
       // 1. Upload to blob storage
       const fd = new FormData();
       fd.append('file', file);
-      const blobRes = await apiFetch<{ pathname: string }>('/api/blob/upload', {
+      const blobRes = await apiFetch<{ pathname: string; url: string }>('/api/blob/upload', {
         method: 'POST',
         body: fd,
       });
 
       // 2. Notify backend
-      await apiFetch(`/api/me/kyc/upload`, {
+      await apiFetch(`/api/kyc/upload`, {
         method: 'POST',
-        body: JSON.stringify({ kind, blobPath: blobRes.pathname }),
+        body: JSON.stringify({ kind, blobPath: blobRes.pathname, url: blobRes.url }),
       });
       
       // 3. Update UI state with a new timestamp to bust cache
-      dispatch({ type: 'SET_IMAGE', payload: { kind, url: `/api/me/kyc/image/${kind}?v=${Date.now()}` } });
+      dispatch({ type: 'SET_IMAGE', payload: { kind, url: `/api/kyc/image/${kind}?v=${Date.now()}` } });
       toast.success(`${kind.replace('_', ' ')} uploaded.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : `Failed to upload ${kind}.`);
@@ -151,7 +151,7 @@ export function useKyc(router: AppRouterInstance) {
   const removeImage = async (kind: 'id_front' | 'id_back' | 'selfie') => {
     dispatch({ type: 'SET_STATUS', payload: 'submitting' });
      try {
-       await apiFetch(`/api/me/kyc/upload/${kind}`, { method: 'DELETE' });
+       await apiFetch(`/api/kyc/upload/${kind}`, { method: 'DELETE' });
        // No need to delete from blob storage here as backend can handle that
        dispatch({ type: 'SET_IMAGE', payload: { kind, url: null } });
        toast.success(`${kind.replace('_', ' ')} removed.`);
@@ -166,10 +166,21 @@ export function useKyc(router: AppRouterInstance) {
   const submitForReview = async () => {
     dispatch({ type: 'SET_STATUS', payload: 'submitting' });
     try {
-      await apiFetch('/api/me/kyc/submit', { method: 'POST' });
+      // 1) Validate and save personal info
+      const dobString = state.dob ? state.dob.toISOString().slice(0, 10) : "";
+      const parsed = KycUpdateSchema.safeParse({ fullName: state.fullName, dob: dobString, gender: state.gender });
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0]?.message || 'Invalid input');
+        return;
+      }
+      await apiFetch('/api/kyc', { method: 'POST', body: JSON.stringify(parsed.data) });
+
+      // 2) Submit KYC
+      await apiFetch('/api/kyc/submit', { method: 'POST' });
       dispatch({ type: 'SET_KYC_STATUS', payload: 'pending' });
       toast.success('KYC submitted for review');
-      router.push('/dashboard'); // Redirect to dashboard after successful submission
+      // Navigate to dashboard; PPR island will fetch fresh status
+      router.replace('/dashboard');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Submit failed');
     } finally {

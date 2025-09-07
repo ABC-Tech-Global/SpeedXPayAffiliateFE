@@ -35,6 +35,7 @@ Important:
   - `JWT_SECRET` set and identical in app and `server/`.
   - API URL set via `API_URL` (or `NEXT_PUBLIC_API_URL`) in the app.
   - Site URL set via `NEXT_PUBLIC_SITE_URL` (e.g., `https://app.example.com`).
+  - If using Vercel Blob for uploads, set `BLOB_READ_WRITE_TOKEN` in the app for uploads and configure `BLOB_PUBLIC_BASE_URL` (or `NEXT_PUBLIC_BLOB_BASE_URL`) in the API to your public blob domain, e.g. `https://YOURID.public.blob.vercel-storage.com`.
 - Database:
   - Provide `DATABASE_URL` (preferred) or full `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME` in API.
   - If your Postgres requires TLS, append `sslmode=require` to `DATABASE_URL`.
@@ -45,6 +46,7 @@ Important:
   - API: `cd server && npm ci && npm run build && npm start` (port 4000).
 - Health checks (API): `GET /health` and `GET /db/health`.
 - Storage: persist `server/uploads/` if using KYC/image uploads.
+  - Vercel Blob: the app stores the full public URL for new uploads. If older rows only contain a path like `kyc/xxx.png`, the API will join it with `BLOB_PUBLIC_BASE_URL` when serving images. Ensure this env is set to avoid broken images.
 - Docker: pass env via platform secrets; ensure the above variables are provided at runtime.
 
 ## Run the stack
@@ -91,7 +93,7 @@ API: http://localhost:4000
 
 ## Conventions & Architecture
 
-- Data layer: Server Components call backend endpoints via helpers in `src/lib/api/me.ts`. These functions:
+- Data layer: Server Components call backend endpoints via helpers in `src/lib/api/*` (split by feature: `users.ts`, `kyc.ts`, `referrals.ts`, `payouts.ts`, `withdrawals.ts`). These functions:
   - Read the `token` from cookies and set Authorization.
   - Use `no-store` caching and throw on non-OK responses.
   - Return typed data defined in `src/types/api.ts`.
@@ -130,5 +132,5 @@ API: http://localhost:4000
   - Client-only data flow: pushes secrets to client; not acceptable.
   - tRPC/GraphQL gateway: more indirection and infra for this scope; revisit if product needs evolve.
 - Usage:
-  - In Server Components: `import { getProfile } from '@/lib/api/me'` and call directly.
+- In Server Components: `import { getProfile } from '@/lib/api/users'` and call directly.
   - In Client Components: continue to call Next routes via `apiFetch<T>()` (`src/lib/api-client.ts`).

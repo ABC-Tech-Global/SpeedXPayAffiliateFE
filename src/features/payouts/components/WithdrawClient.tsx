@@ -29,7 +29,7 @@ export default function WithdrawClient({ balance, allow }: { balance: number; al
         toast.error(check.error.issues[0]?.message || 'Invalid amount');
         return;
       }
-      await apiFetch('/api/me/payouts', { method: 'POST', body: JSON.stringify(check.data) });
+      await apiFetch('/api/payouts/withdraw', { method: 'POST', body: JSON.stringify(check.data) });
       toast.success('Withdrawal requested and pending approval');
       setAmount("");
     } catch (e: unknown) {

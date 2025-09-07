@@ -42,7 +42,7 @@ export default function WelcomeTour({ initialOpen }: { initialOpen?: boolean }) 
     if (typeof initialOpen !== 'undefined') return;
     (async () => {
       try {
-        const prof = await apiFetch<ProfileResponse>('/api/me/profile');
+        const prof = await apiFetch<ProfileResponse>('/api/users/profile');
         const seen = Boolean(prof?.profile?.welcomeTourSeen);
         if (!seen) setOpen(true);
       } catch {
@@ -55,7 +55,7 @@ export default function WelcomeTour({ initialOpen }: { initialOpen?: boolean }) 
   const step = steps[i];
 
   async function done() {
-    try { await apiFetch('/api/me/tour/seen', { method: 'POST' }); } catch {}
+    try { await apiFetch('/api/users/tour/seen', { method: 'POST' }); } catch {}
     setOpen(false);
   }
 

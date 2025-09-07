@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/server-auth";
-import { getReferralDetail, getReferralOrders } from "@/lib/api/me";
+import { getReferralDetail, getReferralOrders } from "@/lib/api/referrals";
 import { OnboardingBadge, AccountStatusBadge } from "@/components/StatusBadges";
 import BackLink from "@/components/BackLink";
 import ReferralTabsShell from "@/features/referrals/components/ReferralTabsShell";

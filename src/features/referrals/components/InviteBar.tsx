@@ -13,7 +13,7 @@ export default function InviteBar({ kycStatus }: { kycStatus: string | null }) {
         const approved = kycStatus === 'approved';
         const site = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
         // Simple referral link based on username (backend can later issue codes)
-        const me = await apiFetch<ProfileResponse>('/api/me/profile').catch(() => null);
+        const me = await apiFetch<ProfileResponse>('/api/users/profile').catch(() => null);
         const uname = me?.profile?.username;
         if (approved && site && uname) {
           setLink(`${site}/signup?ref=${encodeURIComponent(uname)}`);

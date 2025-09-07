@@ -35,10 +35,10 @@ export default function Navbar({ user }: Props) {
     let alive = true;
     (async () => {
       try {
-        const data = await apiFetch<KycResponse>('/api/me/kyc');
+        const data = await apiFetch<KycResponse>('/api/kyc');
         if (!alive) return;
         setKycStatus(data?.kyc?.status || null);
-        const prof = await apiFetch<ProfileResponse>('/api/me/profile').catch(() => ({} as ProfileResponse));
+        const prof = await apiFetch<ProfileResponse>('/api/users/profile').catch(() => ({} as ProfileResponse));
         const pay = prof?.payment || {};
         setPayoutReady(Boolean(pay?.bankName) && Boolean(pay?.bankAccountNumber));
       } catch {}

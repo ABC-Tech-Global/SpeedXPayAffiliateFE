@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/server-auth";
-import { getReferrals } from "@/lib/api/me";
+import { getReferrals } from "@/lib/api/referrals";
 import ReferralsFilters from "@/features/referrals/components/ReferralsFilters";
 import InviteBar from "@/features/referrals/components/InviteBar";
 import ReferralsPagination from "@/features/referrals/components/ReferralsPagination";
