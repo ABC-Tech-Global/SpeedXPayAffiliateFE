@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   if (!token) return NextResponse.json({ error: "missing token" }, { status: 401 })
   const body = await req.json().catch(() => null) as { kind?: string; blobPath?: string; url?: string }
   if (!body || !body.kind || (!body.blobPath && !body.url)) return NextResponse.json({ error: 'invalid body' }, { status: 400 })
-  const res = await fetch(`${API_URL}/kyc/me/upload`, {
+  const res = await fetch(`${API_URL}/kyc/upload`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
@@ -16,4 +16,3 @@ export async function POST(req: Request) {
   const data = await res.json().catch(() => null)
   return NextResponse.json(data ?? { ok: res.ok }, { status: res.status })
 }
-

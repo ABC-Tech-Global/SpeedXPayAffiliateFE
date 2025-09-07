@@ -25,7 +25,7 @@ function filterSpecByTags(spec: any, includeTags: string[]) {
 }
 
 const userTags = [
-  "Health","Auth","Users","Profile","Payment","Bank Accounts","Notifications","Payouts","Withdrawals","2FA","KYC","Referrals",
+  "Health","Auth","Users","Account","Profile","Payment","Bank Accounts","Notifications","Payouts","Withdrawals","2FA","KYC","Referrals",
 ];
 const adminTags = ["Admin"];
 
@@ -68,4 +68,3 @@ export function setupDocs(app: express.Express) {
   );
   app.use("/docs", docsRouter);
 }
-

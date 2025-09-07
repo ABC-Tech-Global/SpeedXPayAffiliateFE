@@ -9,7 +9,7 @@ export async function GET() {
   const token = cookieStore.get("token")?.value || ""
   if (!token) return NextResponse.json({ error: "missing token" }, { status: 401 })
 
-  const res = await fetch(`${API_URL}/kyc/me`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
+  const res = await fetch(`${API_URL}/kyc`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
   const data = await res.json().catch(() => null)
   return NextResponse.json(data, { status: res.status })
 }
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   try {
     const body = await parseJson(request, KycUpdateSchema)
 
-    const res = await fetch(`${API_URL}/kyc/me`, {
+    const res = await fetch(`${API_URL}/kyc`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
@@ -33,4 +33,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }
-

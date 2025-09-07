@@ -11,25 +11,16 @@ async function authHeaders() {
   return { Authorization: `Bearer ${token}` }
 }
 
-async function getJSON<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = await authHeaders()
-  const res = await fetch(`${API_URL}${path}`, {
-    cache: 'no-store',
-    ...init,
-    headers: { ...(init?.headers || {}), ...headers },
-  })
-  const data = await res.json().catch(() => null)
-  if (!res.ok) {
-    const obj = (data as Record<string, unknown>) || {}
-    const msg = (typeof obj.error === 'string' && obj.error)
-      || (typeof obj.message === 'string' && obj.message)
-      || `Request failed (${res.status})`
-    throw new Error(msg)
-  }
-  return (data as T) ?? ({} as T)
-}
-
 export async function getProfile(): Promise<ProfileResponse> {
-  return getJSON<ProfileResponse>('/users/me/profile')
+  const headers = await authHeaders()
+  const [profRes, payRes, notifRes] = await Promise.all([
+    fetch(`${API_URL}/profile`, { headers, cache: 'no-store' }),
+    fetch(`${API_URL}/payment`, { headers, cache: 'no-store' }),
+    fetch(`${API_URL}/notifications`, { headers, cache: 'no-store' }),
+  ])
+  // We are liberal in parsing to avoid throwing on a single failed branch.
+  const profile = await profRes.json().catch(() => ({}))
+  const payment = await payRes.json().catch(() => ({}))
+  const notifications = await notifRes.json().catch(() => ({}))
+  return { profile, payment, notifications }
 }
-

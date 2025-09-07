@@ -5,9 +5,19 @@ import { migrate } from "./db";
 import { setupDocs } from "./docs";
 import { registerHealthRoutes } from "./routes/health";
 import { registerAuthRoutes } from "./routes/auth";
-import { registerMeRoutes } from "./routes/me";
-import { registerAliasRoutes } from "./routes/aliases";
+import { registerUserRoutes } from "./routes/user";
+import { registerProfileRoutes } from "./routes/profile";
+import { registerPaymentRoutes } from "./routes/payment";
+import { registerBankAccountRoutes } from "./routes/bank-accounts";
+import { registerNotificationRoutes } from "./routes/notifications";
+import { registerPayoutRoutes } from "./routes/payouts";
+import { registerWithdrawalRoutes } from "./routes/withdrawals";
+import { registerTwofaRoutes } from "./routes/twofa";
+import { registerKycRoutes } from "./routes/kyc";
+import { registerReferralRoutes } from "./routes/referrals";
 import { registerAdminRoutes } from "./routes/admin";
+import { registerAccountRoutes } from "./routes/account";
+import { registerTourRoutes } from "./routes/tour";
 
 config();
 
@@ -22,8 +32,21 @@ setupDocs(app);
 // Route groups
 registerHealthRoutes(app);
 registerAuthRoutes(app);
-registerMeRoutes(app);
-registerAliasRoutes(app);
+
+// New split route groups
+registerUserRoutes(app);
+registerProfileRoutes(app);
+registerPaymentRoutes(app);
+registerBankAccountRoutes(app);
+registerNotificationRoutes(app);
+registerWithdrawalRoutes(app);
+registerPayoutRoutes(app);
+registerTwofaRoutes(app);
+registerKycRoutes(app);
+registerReferralRoutes(app);
+registerAccountRoutes(app);
+registerTourRoutes(app);
+
 registerAdminRoutes(app);
 
 const port = Number(process.env.PORT || 4000);
@@ -41,4 +64,3 @@ main().catch((err) => {
   console.error("Failed to start API:", err);
   process.exit(1);
 });
-

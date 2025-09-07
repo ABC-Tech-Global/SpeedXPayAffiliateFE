@@ -29,6 +29,7 @@ async function getJSON<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getBankAccounts(): Promise<{ accounts?: { id: number; bank_name: string; account_number: string; is_default: boolean }[] }> {
-  return getJSON(`/users/me/bank-accounts`)
+  const raw = await getJSON<any>(`/bank-accounts`)
+  const accounts = Array.isArray(raw) ? raw : (Array.isArray(raw?.accounts) ? raw.accounts : [])
+  return { accounts }
 }
-

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { API_URL } from "@/lib/config";
 import { LoginSchema, parseJson, validationError } from "@/lib/validation";
 import { ZodError } from "zod";
@@ -20,16 +20,18 @@ export async function POST(req: Request) {
 
     const token: string = data.token;
     const oneDay = 60 * 60 * 24;
-    const cookieStore = await cookies();
-    cookieStore.set("token", token, {
+    const hdrs = await headers();
+    const proto = (hdrs.get('x-forwarded-proto') || new URL(req.url).protocol || '').toString();
+    const isHttps = proto.includes('https');
+    const json = NextResponse.json({ ok: true, passwordResetRequired: Boolean(data?.passwordResetRequired) });
+    json.cookies.set("token", token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV !== "development",
+      secure: isHttps,
       path: "/",
       maxAge: oneDay,
     });
-
-    return NextResponse.json({ ok: true, passwordResetRequired: Boolean(data?.passwordResetRequired) });
+    return json;
   } catch (err) {
     if (err instanceof ZodError) return validationError(err);
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });

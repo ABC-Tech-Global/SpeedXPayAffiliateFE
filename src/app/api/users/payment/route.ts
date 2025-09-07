@@ -9,7 +9,7 @@ export async function GET() {
   const token = cookieStore.get("token")?.value || ""
   if (!token) return NextResponse.json({ error: "missing token" }, { status: 401 })
 
-  const res = await fetch(`${API_URL}/users/me/payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
+  const res = await fetch(`${API_URL}/payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
   const data = await res.json().catch(() => null)
   return NextResponse.json(data, { status: res.status })
 }
@@ -22,7 +22,7 @@ export async function PUT(request: Request) {
     const body = await parseJson(request, PaymentUpdateSchema)
     const twofa = request.headers.get('x-2fa-code') || ''
 
-    const res = await fetch(`${API_URL}/users/me/payment`, {
+    const res = await fetch(`${API_URL}/payment`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(twofa ? { 'x-2fa-code': twofa } : {}) },
       body: JSON.stringify(body),
@@ -34,4 +34,3 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }
-

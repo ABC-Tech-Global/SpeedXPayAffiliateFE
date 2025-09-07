@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, ApiError } from "@/lib/api-client";
 import { useTwofaPrompt } from "@/features/profile/hooks/useTwofaPrompt";
 
 type BankAccount = { id: number; bank_name: string; account_number: string; is_default: boolean };
@@ -18,6 +18,9 @@ export default function BankAccountsTab() {
   const [bankName, setBankName] = React.useState("");
   const [accountNumber, setAccountNumber] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [twofaEnabled, setTwofaEnabled] = React.useState(false);
+  const [twofaCode, setTwofaCode] = React.useState("");
+  const [twofaError, setTwofaError] = React.useState("");
   const { withTwofa, DialogUI } = useTwofaPrompt();
 
   async function load() {
@@ -34,6 +37,21 @@ export default function BankAccountsTab() {
 
   React.useEffect(() => { load(); }, []);
 
+  React.useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    (async () => {
+      try {
+        const d = await apiFetch<{ enabled?: boolean }>("/api/users/2fa");
+        if (!alive) return;
+        setTwofaEnabled(Boolean(d?.enabled));
+      } catch {
+        setTwofaEnabled(false);
+      }
+    })();
+    return () => { alive = false };
+  }, [open]);
+
   const canAddMore = accounts.length < 3;
   const empty = !loading && accounts.length === 0;
 
@@ -45,26 +63,30 @@ export default function BankAccountsTab() {
     if (!name || !number) return;
     setSubmitting(true);
     try {
-      const res = await (async () => {
-        let out: { account?: BankAccount } = {};
-        await withTwofa(async (headers) => {
-          out = await apiFetch<{ account?: BankAccount }>("/api/bank-accounts", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ bankName: name, accountNumber: number, makeDefault: accounts.length === 0 }),
-          });
-        });
-        return out;
-      })();
+      if (twofaEnabled && !/^\d{6}$/.test(twofaCode)) {
+        setTwofaError('Enter a valid 6‑digit code');
+        return;
+      }
+      const headers = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : {};
+      const res = await apiFetch<{ account?: BankAccount }>("/api/bank-accounts", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ bankName: name, bankAccountNumber: number, makeDefault: accounts.length === 0 }),
+      });
       if (res?.account?.id) {
         toast.success("Bank account added");
         setOpen(false);
         setBankName("");
         setAccountNumber("");
+        setTwofaCode("");
         await load();
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add bank account");
+    } catch (err: any) {
+      if (err instanceof ApiError && err.status === 400 && String(err.message || '').toLowerCase().includes('2fa')) {
+        setTwofaError('Invalid 2FA code. Please try again.');
+      } else {
+        toast.error(err instanceof Error ? err.message : "Failed to add bank account");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -157,7 +179,7 @@ export default function BankAccountsTab() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setTwofaCode(''); setTwofaError(''); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add bank account</DialogTitle>
@@ -171,8 +193,23 @@ export default function BankAccountsTab() {
               <Label htmlFor="bankAccountNumber">Bank account number</Label>
               <Input id="bankAccountNumber" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} required />
             </div>
+            {twofaEnabled && (
+              <div className="grid gap-2">
+                <Label htmlFor="twofaCode">Two‑factor code</Label>
+                <Input
+                  id="twofaCode"
+                  inputMode="numeric"
+                  pattern="\d*"
+                  maxLength={6}
+                  placeholder="123456"
+                  value={twofaCode}
+                  onChange={(e) => { setTwofaError(''); setTwofaCode(e.target.value.replace(/[^0-9]/g, '').slice(0,6)); }}
+                />
+                {twofaError && <div className="text-xs text-red-600">{twofaError}</div>}
+              </div>
+            )}
             <DialogFooter>
-              <Button type="submit" disabled={submitting || !canAddMore}>{submitting ? 'Adding…' : 'Add account'}</Button>
+              <Button type="submit" disabled={submitting || !canAddMore || (twofaEnabled && !/^\d{6}$/.test(twofaCode))}>{submitting ? 'Adding…' : 'Add account'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

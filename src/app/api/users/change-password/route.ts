@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const body = await parseJson(request, ChangePasswordSchema)
     const twofa = request.headers.get('x-2fa-code') || ''
 
-    const res = await fetch(`${API_URL}/users/me/change-password`, {
+    const res = await fetch(`${API_URL}/account/change-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(twofa ? { 'x-2fa-code': twofa } : {}) },
       body: JSON.stringify(body),
@@ -24,4 +24,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }
-

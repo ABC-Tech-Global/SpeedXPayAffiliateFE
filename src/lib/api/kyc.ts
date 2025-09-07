@@ -30,6 +30,5 @@ async function getJSON<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getKyc(): Promise<KycResponse> {
-  return getJSON<KycResponse>('/kyc/me')
+  return getJSON<KycResponse>('/kyc')
 }
-
