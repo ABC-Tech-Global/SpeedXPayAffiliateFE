@@ -1,10 +1,12 @@
 import express from "express";
-import { registerUser } from "../auth";
+import { registerUser } from "../auth"; // used by /admin/users; seed no longer creates users
 import * as usersRepo from "../repos/users";
 import * as kycRepo from "../repos/kyc";
 import * as referralsRepo from "../repos/referrals";
 import * as withdrawalsRepo from "../repos/withdrawals";
 import * as ledgerRepo from "../repos/ledger";
+import * as ordersRepo from "../repos/orders";
+import { pool } from "../db";
 
 export function registerAdminRoutes(app: express.Express) {
   app.post("/admin/users", async (req, res) => {
@@ -19,20 +21,153 @@ export function registerAdminRoutes(app: express.Express) {
     }
   });
 
+  // Enhanced seed: link random existing users as referrals to the specified user
+  // (does NOT create any users), create referral orders for those referees,
+  // and insert commissions ledger entries for the referrer.
   app.post("/admin/seed", async (req, res) => {
     try {
-      const count = Math.max(1, Math.min(100, Number(req.body?.count || 10)));
-      const prefix = (req.body?.prefix ? String(req.body.prefix) : 'user').toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 20) || 'user';
-      const password = String(req.body?.password || 'password123');
-      const created: Array<{ id: number; username: string }> = [];
-      for (let i = 0; i < count; i++) {
-        const uname = `${prefix}${i}`;
-        try {
-          const u = await registerUser(uname, password);
-          created.push({ id: (u as any).id, username: u.username });
-        } catch {}
+      const body = req.body || {};
+      const user = body.user || {};
+      const referralsCfg = body.referrals || {};
+      const ledgerCfg = body.ledger || {};
+
+      const username = String(user.username || '').trim().toLowerCase();
+      const password = String(user.password || 'password123');
+      if (!username) return res.status(400).json({ error: 'user.username is required' });
+
+      // Find or create the referrer user (to allow random new usernames)
+      let referrer = await usersRepo.findUserByUsername(username);
+      if (!referrer) {
+        const created = await registerUser(username, password);
+        referrer = await usersRepo.findUserByUsername(created.username);
       }
-      res.json({ createdCount: created.length, users: created });
+      if (!referrer?.id) return res.status(500).json({ error: 'failed to load referrer user' });
+
+      // Referral generation config
+      const referralCount = Math.max(0, Math.min(100, Number(referralsCfg.count ?? 3)));
+      const ordersPerReferral = Math.max(0, Math.min(50, Number(referralsCfg.ordersPerReferral ?? 1)));
+      let amountMin = Number.isFinite(Number(referralsCfg.amountMin)) ? Math.max(0, Number(referralsCfg.amountMin)) : 10;
+      let amountMax = Number.isFinite(Number(referralsCfg.amountMax)) ? Math.max(0, Number(referralsCfg.amountMax)) : 100;
+      if (amountMax < amountMin) [amountMin, amountMax] = [amountMax, amountMin];
+      const onboardingOptions = ['Registered', 'active', 'deactivated'] as const;
+      const randomizeOnboarding = Boolean(referralsCfg.randomizeOnboarding ?? true);
+      const providedOnboarding = referralsCfg.onboardingStatus ? String(referralsCfg.onboardingStatus) : undefined;
+      const sampleExisting = Boolean(referralsCfg.sampleExisting ?? false);
+      const createMissing = Boolean(referralsCfg.createMissing ?? (!sampleExisting));
+
+      function randInt(min: number, max: number) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+      function randAmount(min: number, max: number) {
+        const cents = randInt(Math.round(min * 100), Math.round(max * 100));
+        return cents / 100;
+      }
+      function randSuffix(n = 6) {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        let out = '';
+        for (let i = 0; i < n; i++) out += chars[Math.floor(Math.random() * chars.length)];
+        return out;
+      }
+
+      const referredUsers: Array<{ id: number; username: string }> = [];
+      let totalOrdersAmount = 0;
+      let totalOrdersCount = 0;
+
+      // Fetch random existing users (excluding referrer)
+      let candidates: Array<{ id: number; username: string }> = [];
+      if (sampleExisting) {
+        const rs = await pool.query(
+          `SELECT id, username FROM users WHERE id <> $1 ORDER BY random() LIMIT $2`,
+          [referrer.id, referralCount]
+        );
+        candidates = rs.rows.map((r: any) => ({ id: Number(r.id), username: String(r.username) }));
+      }
+      // Create referred users (either to fill missing when sampling, or all when not sampling)
+      const needToCreate = sampleExisting ? Math.max(0, referralCount - candidates.length) : referralCount;
+      for (let k = 0; k < needToCreate; k++) {
+        let uname = `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        // ensure uniqueness
+        for (let attempts = 0; attempts < 5; attempts++) {
+          const exists = await usersRepo.findUserByUsername(uname);
+          if (!exists) break;
+          uname = `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        }
+        const pwd = Math.random().toString(36).slice(2, 10);
+        const created = await registerUser(uname, pwd);
+        const row = await usersRepo.findUserByUsername(created.username);
+        if (row?.id) candidates.push({ id: Number(row.id), username: String(row.username) });
+      }
+
+      for (let i = 0; i < candidates.length; i++) {
+        const referredRow = candidates[i];
+        referredUsers.push({ id: Number(referredRow.id), username: String(referredRow.username) });
+
+        // Determine onboarding status
+        const onboardingStatus = randomizeOnboarding
+          ? onboardingOptions[Math.floor(Math.random() * onboardingOptions.length)]
+          : (providedOnboarding || 'Registered');
+
+        // Create orders only for 'active' or 'deactivated'
+        let sumForReferral = 0;
+        if (onboardingStatus === 'active' || onboardingStatus === 'deactivated') {
+          for (let j = 0; j < ordersPerReferral; j++) {
+            const amt = randAmount(amountMin, amountMax);
+            const oid = `ord_${Date.now()}_${i}_${j}_${randSuffix(4)}`;
+            await ordersRepo.insertOrder(Number(referredRow.id), oid, amt);
+            sumForReferral += amt;
+            totalOrdersAmount += amt;
+            totalOrdersCount += 1;
+          }
+        }
+        // Insert referral link with amount_processed equal to sum of orders (skip if exists)
+        const exists = await referralsRepo.linkExists(referrer.id, Number(referredRow.id));
+        if (!exists) {
+          await referralsRepo.insertReferral(referrer.id, Number(referredRow.id), sumForReferral, onboardingStatus);
+        }
+      }
+
+      // Ledger entries for referrer (support randomization)
+      const randomizeBonus = Boolean(ledgerCfg.randomizeBonus ?? false);
+      const randomizeWithdrawal = Boolean(ledgerCfg.randomizeWithdrawal ?? false);
+      let bonusAmount = 0;
+      if (randomizeBonus) {
+        const bMin = Math.max(0, Number(ledgerCfg.bonusMin ?? 1));
+        const bMax = Math.max(bMin, Number(ledgerCfg.bonusMax ?? Math.max(1, Math.round(totalOrdersAmount))))
+        bonusAmount = randAmount(bMin, bMax);
+      } else if (ledgerCfg.bonusAmount != null && Number(ledgerCfg.bonusAmount) > 0) {
+        bonusAmount = Number(ledgerCfg.bonusAmount);
+      } else {
+        bonusAmount = Number(((ledgerCfg.bonusPercentOfOrders ?? 10) / 100) * totalOrdersAmount);
+      }
+      let withdrawalAmount = 0;
+      if (randomizeWithdrawal) {
+        const wMin = Math.max(0, Number(ledgerCfg.withdrawalMin ?? 0));
+        const wMax = Math.max(wMin, Number(ledgerCfg.withdrawalMax ?? Math.max(1, Math.round(totalOrdersAmount / 2))));
+        withdrawalAmount = randAmount(wMin, wMax);
+      } else if (ledgerCfg.withdrawalAmount != null && Number(ledgerCfg.withdrawalAmount) > 0) {
+        withdrawalAmount = Number(ledgerCfg.withdrawalAmount);
+      } else {
+        withdrawalAmount = 0;
+      }
+      if (Number.isFinite(bonusAmount) && bonusAmount > 0) {
+        await ledgerRepo.insertEntry(referrer.id, 'bonus', bonusAmount, String(ledgerCfg.description || 'Seed bonus'));
+      }
+      if (Number.isFinite(withdrawalAmount) && withdrawalAmount > 0) {
+        await ledgerRepo.insertEntry(referrer.id, 'withdrawal', withdrawalAmount, 'Seed withdrawal');
+      }
+
+      res.json({
+        user: { id: referrer.id, username: referrer.username },
+        requestedReferrals: referralCount,
+        referralsCreated: referredUsers.length,
+        referredUsers,
+        orders: { count: totalOrdersCount, totalAmount: Number(totalOrdersAmount.toFixed(2)) },
+        ledger: {
+          bonusInserted: bonusAmount > 0 ? Number(bonusAmount.toFixed(2)) : 0,
+          withdrawalInserted: withdrawalAmount > 0 ? Number(withdrawalAmount.toFixed(2)) : 0,
+        },
+        note: (sampleExisting && !createMissing && candidates.length < referralCount) ? `Only ${candidates.length} referrals created due to limited existing users` : undefined,
+      });
     } catch (e) {
       res.status(400).json({ error: 'Invalid request' });
     }
@@ -127,4 +262,3 @@ export function registerAdminRoutes(app: express.Express) {
     } catch (e) { res.status(400).json({ error: 'Invalid request' }); }
   });
 }
-

@@ -264,10 +264,71 @@ export const openapiSpec = {
     "/admin/seed": {
       post: {
         tags: ["Admin"],
-        summary: "Admin: seed users",
+        summary: "Admin: seed referrals, orders, and ledger for an existing user",
+        description: "Finds the provided user (does not create users), samples existing users as referees, inserts referral links and orders, and creates commissions ledger entries for the referrer.",
         security: [],
-        requestBody: { required: false, content: { "application/json": { schema: { type: "object", properties: { count: { type: "integer", minimum: 1, maximum: 100 }, prefix: { type: "string" }, password: { type: "string" } } } } } },
-        responses: { 200: { description: "OK" }, 401: { description: "Unauthorized" } },
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  user: { type: "object", properties: { username: { type: "string" }, password: { type: "string" } }, required: ["username"] },
+                  referrals: {
+                    type: "object",
+                    properties: {
+                      count: { type: "integer", minimum: 0, maximum: 100 },
+                      ordersPerReferral: { type: "integer", minimum: 0, maximum: 50 },
+                      amountMin: { type: "number", minimum: 0 },
+                      amountMax: { type: "number", minimum: 0 },
+                      onboardingStatus: { type: "string", description: "If provided and randomizeOnboarding=false, use this value for all referrals.", enum: ["Registered", "active", "deactivated"] },
+                      randomizeOnboarding: { type: "boolean", description: "Randomize onboarding status per referral among Registered, active, deactivated. Default: true" },
+                      createMissing: { type: "boolean", description: "Deprecated (handled automatically). When sampleExisting=true and not enough users exist, create placeholders to reach requested count." },
+                      sampleExisting: { type: "boolean", description: "If true, sample existing users as referrals and create the remainder as placeholders. Default: false (always create new placeholder referrals)." }
+                    }
+                  },
+                  ledger: {
+                    type: "object",
+                    properties: {
+                      bonusAmount: { type: "number", minimum: 0, description: "If >0 and randomizeBonus=false, uses this amount." },
+                      bonusPercentOfOrders: { type: "number", minimum: 0, maximum: 100, description: "Used when bonusAmount<=0 and randomizeBonus=false. Default 10." },
+                      withdrawalAmount: { type: "number", minimum: 0 },
+                      description: { type: "string" },
+                      randomizeBonus: { type: "boolean", description: "If true, ignore bonusAmount/percent and choose random amount between bonusMin/bonusMax." },
+                      bonusMin: { type: "number", minimum: 0 },
+                      bonusMax: { type: "number", minimum: 0 },
+                      randomizeWithdrawal: { type: "boolean", description: "If true, ignore withdrawalAmount and choose random amount between withdrawalMin/withdrawalMax." },
+                      withdrawalMin: { type: "number", minimum: 0 },
+                      withdrawalMax: { type: "number", minimum: 0 }
+                    }
+                  }
+                },
+                required: ["user"]
+              }
+            }
+          }
+        },
+        responses: {
+          200: {
+            description: "Seeded successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    user: { type: "object", properties: { id: { type: "integer" }, username: { type: "string" } }, required: ["id","username"] },
+                    referralsCreated: { type: "integer" },
+                    referredUsers: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, username: { type: "string" } } } },
+                    orders: { type: "object", properties: { count: { type: "integer" }, totalAmount: { type: "number" } } },
+                    ledger: { type: "object", properties: { bonusInserted: { type: "number" }, withdrawalInserted: { type: "number" } } }
+                  }
+                }
+              }
+            }
+          },
+          400: { description: "Invalid request" }
+        },
       },
     },
     "/admin/kyc/{username}/approve": {

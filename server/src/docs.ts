@@ -43,6 +43,11 @@ export function setupDocs(app: express.Express) {
 
   // Consolidated Swagger UI under a single router
   const docsRouter = express.Router();
+  // Prevent any caching of the Swagger UI HTML
+  docsRouter.use((_, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
   docsRouter.use(swaggerUi.serve);
   docsRouter.get(
     "/",
@@ -67,4 +72,53 @@ export function setupDocs(app: express.Express) {
     swaggerUi.setup(null, { swaggerOptions: { url: "/openapi-admin.json" } })
   );
   app.use("/docs", docsRouter);
+
+  // Provide an alternate, clean base in case older catch-all mounts interfere
+  app.use("/docs2", docsRouter);
+
+  // Fully standalone pages that hard-pin a single spec and clear any Swagger UI state.
+  function standaloneHtml(title: string, specUrl: string) {
+    // Use CDN assets so we don't depend on local swagger-ui-express HTML, and purge any persisted state keys.
+    return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${title}</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    <style>html,body,#swagger-ui{height:100%} body{margin:0}</style>
+    <script>
+      try {
+        if (window.localStorage) {
+          const keys = Object.keys(localStorage).filter(k => k.toLowerCase().includes('swagger'));
+          keys.forEach(k => localStorage.removeItem(k));
+        }
+      } catch (e) { /* ignore */ }
+    </script>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      window.ui = SwaggerUIBundle({
+        url: '${specUrl}',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        layout: 'BaseLayout',
+        tryItOutEnabled: true,
+        persistAuthorization: false,
+      });
+    </script>
+  </body>
+</html>`;
+  }
+
+  app.get("/docs-user", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.type("html").send(standaloneHtml("User API", "/openapi-user.json"));
+  });
+  app.get("/docs-admin", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.type("html").send(standaloneHtml("Admin API", "/openapi-admin.json"));
+  });
 }
