@@ -67,6 +67,14 @@ export async function getLatestWithPath(userId: number, column: string) {
   return rows[0] || null;
 }
 
+export async function setLatestStatus(userId: number, status: 'approved' | 'rejected', reviewerNote?: string) {
+  const { rows } = await pool.query(`SELECT id FROM kyc_submissions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1`, [userId]);
+  const id = rows[0]?.id as number | undefined;
+  if (!id) return false;
+  await pool.query(`UPDATE kyc_submissions SET status=$1, reviewer_note=$2, reviewed_at=NOW(), updated_at=NOW() WHERE id=$3`, [status, reviewerNote || null, id]);
+  return true;
+}
+
 export async function clearUploadPathById(id: number, column: string) {
   const allowed = new Set(["id_front_path", "id_back_path", "selfie_path"]);
   if (!allowed.has(column)) throw new Error("invalid column");

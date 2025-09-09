@@ -22,7 +22,6 @@ export const PaymentUpdateSchema = z.object({
 }).strict()
 
 export const ChangePasswordSchema = z.object({
-  oldPassword: z.string().min(1),
   newPassword: z.string().min(6),
 }).strict()
 
@@ -37,12 +36,13 @@ export const TwoFAEnableSchema = z.object({
 
 export const WithdrawRequestSchema = z.object({
   amount: z.number().int().positive(),
+  bankAccountId: z.number().int().positive().optional(),
 }).strict()
 
 export const KycUpdateSchema = z.object({
   fullName: z.string().trim().min(1).max(200),
   dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  gender: z.enum(['female', 'male', 'other', 'prefer_not_say']),
+  gender: z.enum(['female', 'male', '']).optional(),
 }).strict()
 
 export const PayoutsQuerySchema = z.object({

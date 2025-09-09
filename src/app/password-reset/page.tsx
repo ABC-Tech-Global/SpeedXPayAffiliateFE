@@ -26,7 +26,7 @@ function PasswordResetInner() {
     }
     setLoading(true);
     try {
-      await apiFetch("/api/me/change-password", {
+      await apiFetch("/api/users/change-password", {
         method: "POST",
         body: JSON.stringify({ newPassword }),
       });

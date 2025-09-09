@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/server-auth";
-import KycClient from "./KycClient";
+import KycClient from "@/features/kyc/components/KycClient";
 import BackLink from "@/components/BackLink";
 
 export default async function KycPage() {

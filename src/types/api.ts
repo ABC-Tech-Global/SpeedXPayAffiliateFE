@@ -7,7 +7,16 @@ export type ProfileResponse = {
 };
 
 export type KycResponse = {
-  kyc?: { status?: string; rejection_reason?: string | null; full_name?: string; dob?: string; gender?: string };
+  kyc?: {
+    status?: string;
+    rejection_reason?: string | null;
+    full_name?: string;
+    dob?: string;
+    gender?: string;
+    has_id_front?: boolean;
+    has_id_back?: boolean;
+    has_selfie?: boolean;
+  };
 };
 
 export type HistoryItem = { type: string; amount: string | number; description: string; created_at: string };
@@ -29,4 +38,3 @@ export type ReferralDetailResponse = {
 };
 
 export type ReferralOrdersResponse = { orders?: { id?: string; amount?: number | string; created_at?: string }[]; total?: number | string; page?: number | string; limit?: number | string };
-

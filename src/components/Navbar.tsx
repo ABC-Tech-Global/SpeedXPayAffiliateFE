@@ -35,10 +35,10 @@ export default function Navbar({ user }: Props) {
     let alive = true;
     (async () => {
       try {
-        const data = await apiFetch<KycResponse>('/api/me/kyc');
+        const data = await apiFetch<KycResponse>('/api/kyc');
         if (!alive) return;
         setKycStatus(data?.kyc?.status || null);
-        const prof = await apiFetch<ProfileResponse>('/api/me/profile').catch(() => ({} as ProfileResponse));
+        const prof = await apiFetch<ProfileResponse>('/api/users/profile').catch(() => ({} as ProfileResponse));
         const pay = prof?.payment || {};
         setPayoutReady(Boolean(pay?.bankName) && Boolean(pay?.bankAccountNumber));
       } catch {}
@@ -139,12 +139,7 @@ export default function Navbar({ user }: Props) {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          {/* Onboarding compact CTA */}
-          {!pathname?.startsWith('/kyc') && (!kycStatus || kycStatus === null) && (
-            <Link href="/kyc" className="hidden md:inline-flex">
-              <Button variant="secondary" size="sm">Complete KYC</Button>
-            </Link>
-          )}
+          {/* Removed 'Complete KYC' CTA per request */}
           {kycStatus === 'approved' && !payoutReady && (
             <Link href="/profile#payment" className="hidden md:inline-flex">
               <Button variant="outline" size="sm">Add payout details</Button>

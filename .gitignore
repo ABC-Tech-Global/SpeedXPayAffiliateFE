@@ -47,3 +47,4 @@ server/node_modules
 server/dist
 AGENTS.md
 docker-compose.yml
+GEMINI.md

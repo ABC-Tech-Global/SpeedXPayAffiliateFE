@@ -6,8 +6,11 @@ export async function middleware(request: NextRequest) {
 
   const token = request.cookies.get("token")?.value;
   if (!token) {
-    const to = `/login${pathname}${search || ""}`;
-    return NextResponse.redirect(new URL(to, request.url));
+    const sep = (search && search.length > 0) ? "&" : "?";
+    const to = `/login${pathname}${search || ""}${sep}reason=missing-token`;
+    const res = NextResponse.redirect(new URL(to, request.url));
+    res.headers.set('x-auth-debug', 'missing-token');
+    return res;
   }
 
   try {
@@ -19,8 +22,11 @@ export async function middleware(request: NextRequest) {
     await jwtVerify(token, secret, { algorithms: ["HS256"], clockTolerance: 5 });
     return NextResponse.next();
   } catch {
-    const to = `/login${pathname}${search || ""}`;
-    return NextResponse.redirect(new URL(to, request.url));
+    const sep = (search && search.length > 0) ? "&" : "?";
+    const to = `/login${pathname}${search || ""}${sep}reason=invalid-token`;
+    const res = NextResponse.redirect(new URL(to, request.url));
+    res.headers.set('x-auth-debug', 'invalid-token');
+    return res;
   }
 }
 

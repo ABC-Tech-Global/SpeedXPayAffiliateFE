@@ -13,7 +13,7 @@ export async function getCurrentUser(): Promise<ServerCurrentUser | null> {
   if (!token) return null
 
   try {
-    const res = await fetch(`${API_URL}/me`, {
+    const res = await fetch(`${API_URL}/user`, {
       headers: { Authorization: `Bearer ${token}` },
       // User identity should not be cached across users
       cache: 'no-store',

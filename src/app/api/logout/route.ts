@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 
 export async function POST() {
-  // Clear the auth cookie
-  const cookieStore = await cookies();
-  cookieStore.set("token", "", {
+  const hdrs = await headers();
+  const proto = (hdrs.get('x-forwarded-proto') || '').toString();
+  const isHttps = proto.includes('https');
+  const json = NextResponse.json({ ok: true });
+  json.cookies.set("token", "", {
     path: "/",
     maxAge: 0,
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV !== "development",
+    secure: isHttps,
   });
-  return NextResponse.json({ ok: true });
+  return json;
 }

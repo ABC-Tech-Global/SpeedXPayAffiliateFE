@@ -1,9 +1,9 @@
 import { requireUser } from "@/lib/server-auth";
-import { getReferralDetail, getReferralOrders } from "@/lib/api/me";
+import { getReferralDetail, getReferralOrders } from "@/lib/api/referrals";
 import { OnboardingBadge, AccountStatusBadge } from "@/components/StatusBadges";
 import BackLink from "@/components/BackLink";
-import ReferralTabsShell from "../ReferralTabsShell";
-import OrdersFilters from "./orders-filters";
+import ReferralTabsShell from "@/features/referrals/components/ReferralTabsShell";
+import OrdersFilters from "@/features/referrals/components/OrdersFilters";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 type Order = { id?: string; amount?: number | string; created_at?: string };
@@ -16,9 +16,10 @@ type ReferralDetail = {
   };
 } | null;
 
-export default async function ReferralDetailPage({ params, searchParams }: { params: { username: string }, searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function ReferralDetailPage({ params, searchParams }: { params: Promise<{ username: string }>, searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireUser();
   const spObj = await searchParams;
+  const p = await params;
   const page = Number(spObj.page || 1);
   const limit = Number(spObj.limit || 10);
 
@@ -26,8 +27,8 @@ export default async function ReferralDetailPage({ params, searchParams }: { par
   let total = 0;
   let detail: ReferralDetail = null;
   try {
-    detail = await getReferralDetail(params.username);
-    const data = await getReferralOrders(params.username, { page, limit });
+    detail = await getReferralDetail(p.username);
+    const data = await getReferralOrders(p.username, { page, limit });
     orders = Array.isArray(data?.orders) ? (data.orders as Order[]) : [];
     total = Number(data?.total || 0);
   } catch {}
@@ -95,7 +96,7 @@ export default async function ReferralDetailPage({ params, searchParams }: { par
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <BackLink className="mb-2" to="/referrals" />
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Referral: {params.username}</h1>
+        <h1 className="text-2xl font-semibold">Referral: {p.username}</h1>
       </header>
       <ReferralTabsShell overview={overview} transactions={transactions} />
     </div>

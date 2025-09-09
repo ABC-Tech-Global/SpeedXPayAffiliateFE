@@ -1,8 +1,23 @@
 import express from "express";
 import cors from "cors";
 import { config } from "dotenv";
-import { migrate, pool } from "./db";
-import { loginUser, registerUser, verifyToken } from "./auth";
+import { migrate } from "./db";
+import { setupDocs } from "./docs";
+import { registerHealthRoutes } from "./routes/health";
+import { registerAuthRoutes } from "./routes/auth";
+import { registerUserRoutes } from "./routes/user";
+import { registerProfileRoutes } from "./routes/profile";
+import { registerPaymentRoutes } from "./routes/payment";
+import { registerBankAccountRoutes } from "./routes/bank-accounts";
+import { registerNotificationRoutes } from "./routes/notifications";
+import { registerPayoutRoutes } from "./routes/payouts";
+import { registerWithdrawalRoutes } from "./routes/withdrawals";
+import { registerTwofaRoutes } from "./routes/twofa";
+import { registerKycRoutes } from "./routes/kyc";
+import { registerReferralRoutes } from "./routes/referrals";
+import { registerAdminRoutes } from "./routes/admin";
+import { registerAccountRoutes } from "./routes/account";
+import { registerTourRoutes } from "./routes/tour";
 
 config();
 
@@ -11,63 +26,28 @@ const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
 app.use(cors({ origin: corsOrigin, credentials: false }));
 app.use(express.json());
 
-app.get("/health", (_req, res) => {
-  res.json({ ok: true });
-});
+// Swagger/OpenAPI
+setupDocs(app);
 
-app.get("/db/health", async (_req, res) => {
-  try {
-    await pool.query("SELECT 1");
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: String(err) });
-  }
-});
+// Route groups
+registerHealthRoutes(app);
+registerAuthRoutes(app);
 
-app.get("/users", async (_req, res) => {
-  try {
-    const { rows } = await pool.query(
-      "SELECT id, username, created_at FROM users ORDER BY id DESC"
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: String(err) });
-  }
-});
+// New split route groups
+registerUserRoutes(app);
+registerProfileRoutes(app);
+registerPaymentRoutes(app);
+registerBankAccountRoutes(app);
+registerNotificationRoutes(app);
+registerWithdrawalRoutes(app);
+registerPayoutRoutes(app);
+registerTwofaRoutes(app);
+registerKycRoutes(app);
+registerReferralRoutes(app);
+registerAccountRoutes(app);
+registerTourRoutes(app);
 
-app.post("/auth/register", async (req, res) => {
-  const username = String(req.body?.username || "");
-  const password = String(req.body?.password || "");
-  try {
-    const user = await registerUser(username, password);
-    res.status(201).json(user);
-  } catch (err) {
-    res.status(400).json({ error: String(err instanceof Error ? err.message : err) });
-  }
-});
-
-app.post("/auth/login", async (req, res) => {
-  const username = String(req.body?.username || "");
-  const password = String(req.body?.password || "");
-  try {
-    const result = await loginUser(username, password);
-    res.json(result);
-  } catch (err) {
-    res.status(401).json({ error: "Invalid username or password" });
-  }
-});
-
-app.get("/me", (req, res) => {
-  const auth = req.headers.authorization || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!token) return res.status(401).json({ error: "missing token" });
-  try {
-    const payload = verifyToken(token);
-    res.json({ ok: true, user: { id: payload.sub, username: payload.username } });
-  } catch {
-    res.status(401).json({ error: "invalid token" });
-  }
-});
+registerAdminRoutes(app);
 
 const port = Number(process.env.PORT || 4000);
 
