@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "ts-node-dev --project tsconfig.json --respawn --transpile-only src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "migrate": "node dist/migrate.js",
+    "migrate:prod": "npm run build && node dist/migrate.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
