@@ -14,26 +14,24 @@ export function useTwofaPrompt() {
   const [error, setError] = React.useState<string>("");
   const [loading, setLoading] = React.useState(false);
   const pending = React.useRef<{
-    fn: (headers: HeadersMap) => Promise<void>;
-    resolve: () => void;
-    reject: (e?: any) => void;
+    fn: (headers: HeadersMap) => Promise<unknown>;
+    resolve: (value: unknown) => void;
+    reject: (error?: unknown) => void;
   } | null>(null);
 
   async function withTwofa<T = void>(fn: (headers: HeadersMap) => Promise<T>): Promise<T> {
     const d = await apiFetch<{ enabled?: boolean }>("/api/users/2fa").catch(() => ({ enabled: false }));
     if (!d?.enabled) {
       // 2FA not enabled; just run
-      return (await fn({})) as T;
+      return fn({});
     }
     setCode("");
     setError("");
     setOpen(true);
     return new Promise<T>((resolve, reject) => {
       pending.current = {
-        fn: async (headers) => {
-          await fn(headers);
-        },
-        resolve: () => resolve(undefined as unknown as T),
+        fn: (headers) => fn(headers),
+        resolve: (value) => resolve(value as T),
         reject,
       };
     });
@@ -52,12 +50,12 @@ export function useTwofaPrompt() {
     setLoading(true);
     setError("");
     try {
-      await pending.current.fn({ 'x-2fa-code': code });
-      const r = pending.current;
+      const result = await pending.current.fn({ 'x-2fa-code': code });
+      const ref = pending.current;
       pending.current = null;
       setOpen(false);
-      r.resolve();
-    } catch (e: any) {
+      ref.resolve(result);
+    } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 400) {
         const msg = String(e.message || '').toLowerCase();
         if (msg.includes('2fa') || msg.includes('invalid code') || msg.includes('otp')) {

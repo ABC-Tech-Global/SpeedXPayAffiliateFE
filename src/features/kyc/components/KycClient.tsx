@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,7 @@ function Lightbox({ src, onClose }: { src: string | null; onClose: () => void })
       role="dialog"
       aria-modal="true"
     >
-      <img src={src} alt="Preview" className="max-h-[90vh] max-w-[90vw] rounded shadow-lg" />
+      <Image src={src} alt="Preview" width={720} height={720} className="max-h-[90vh] max-w-[90vw] rounded shadow-lg" unoptimized />
     </div>,
     document.body
   );
@@ -39,7 +40,7 @@ function Lightbox({ src, onClose }: { src: string | null; onClose: () => void })
 
 export default function KycClient() {
   const router = useRouter();
-  const { state, dispatch, saveInfo, uploadImage, removeImage, submitForReview } = useKyc(router);
+  const { state, dispatch, uploadImage, removeImage, submitForReview } = useKyc(router);
   const [lightboxSrc, setLightboxSrc] = React.useState<string | null>(null);
 
   const { status, kycStatus, fullName, dob, gender, images } = state;
@@ -76,7 +77,7 @@ export default function KycClient() {
               id="dob"
               label="Date of Birth"
               value={dob}
-              onChange={(d) => dispatch({ type: 'SET_FIELD', payload: { field: 'dob', value: d } })}
+              onChange={(d) => dispatch({ type: 'SET_FIELD', payload: { field: 'dob', value: d ?? null } })}
               disabled={disabled || loading}
               fromYear={1900}
               toYear={new Date().getFullYear()}

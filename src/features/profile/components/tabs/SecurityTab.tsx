@@ -64,8 +64,17 @@ function TwoFASetup() {
     (async () => {
       try {
         const d = await apiFetch<{ enabled?: boolean; issuer?: string; label?: string; digits?: number; period?: number }>("/api/users/2fa");
-        setDetails(d || null);
-        if (d?.enabled) setStep('enabled');
+        const safeDetails = d
+          ? {
+              enabled: Boolean(d.enabled),
+              issuer: d.issuer,
+              label: d.label,
+              digits: d.digits,
+              period: d.period,
+            }
+          : null;
+        setDetails(safeDetails);
+        if (safeDetails?.enabled) setStep('enabled');
       } catch {}
     })();
   }, []);
@@ -97,7 +106,16 @@ function TwoFASetup() {
                 await apiFetch('/api/users/2fa/enable', { method: 'POST', body: JSON.stringify(parsed.data) });
                 setStep('enabled');
                 const d = await apiFetch<{ enabled?: boolean; issuer?: string; label?: string; digits?: number; period?: number }>("/api/users/2fa");
-                setDetails(d || { enabled: true });
+                const safeDetails = d
+                  ? {
+                      enabled: Boolean(d.enabled),
+                      issuer: d.issuer,
+                      label: d.label,
+                      digits: d.digits,
+                      period: d.period,
+                    }
+                  : { enabled: true };
+                setDetails(safeDetails);
               } catch (e) {
                 alert(e instanceof Error ? e.message : 'Invalid code');
               }
@@ -108,10 +126,10 @@ function TwoFASetup() {
       {step === 'enabled' && (
         <div className="space-y-2">
           <div className="text-sm text-green-700">2FA is enabled.</div>
-          <div className="rounded-md bg-muted/40 p-3 text-sm">
-            <div>Type: Time-based (TOTP)</div>
-            <div>Digits: {details?.digits ?? 6}</div>
-            <div>Interval: {details?.period ?? 30}s</div>
+            <div className="rounded-md bg-muted/40 p-3 text-sm">
+              <div>Type: Time-based (TOTP)</div>
+              <div>Digits: {details?.digits ?? 6}</div>
+              <div>Interval: {details?.period ?? 30}s</div>
             {details?.issuer && <div>Issuer: {details.issuer}</div>}
             {details?.label && <div>Account label: {details.label}</div>}
           </div>

@@ -25,6 +25,19 @@ export const ChangePasswordSchema = z.object({
   newPassword: z.string().min(6),
 }).strict()
 
+export const ForceResetPasswordSchema = z.object({
+  password: z.string().min(6),
+  confirmPassword: z.string().min(6),
+}).superRefine((value, ctx) => {
+  if (value.password !== value.confirmPassword) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['confirmPassword'],
+      message: 'Passwords must match',
+    })
+  }
+})
+
 export const NotificationsUpdateSchema = z.object({
   productUpdates: z.boolean(),
   payouts: z.boolean(),

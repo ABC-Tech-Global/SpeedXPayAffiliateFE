@@ -26,9 +26,9 @@ function PasswordResetInner() {
     }
     setLoading(true);
     try {
-      await apiFetch("/api/users/change-password", {
+      await apiFetch("/api/users/force-reset", {
         method: "POST",
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify({ password: newPassword, confirmPassword: confirm }),
       });
       toast.success("Password updated");
       setTimeout(() => {

@@ -19,7 +19,7 @@ export function DatePicker({
   id: string;
   label: string;
   value?: Date | null;
-  onChange: (d: Date | undefined) => void;
+  onChange: (d: Date | null) => void;
   disabled?: boolean;
   fromYear?: number;
   toYear?: number;
@@ -46,12 +46,12 @@ export function DatePicker({
         <PopoverContent className="w-auto overflow-hidden p-0" align="start">
           <Calendar
             mode="single"
-            selected={value}
+            selected={value ?? undefined}
             captionLayout="dropdown"
             fromYear={fromYear}
             toYear={toYear}
             onSelect={(d) => {
-              onChange(d);
+              onChange(d ?? null);
               if (d) setOpen(false);
             }}
           />
@@ -60,4 +60,3 @@ export function DatePicker({
     </div>
   );
 }
-

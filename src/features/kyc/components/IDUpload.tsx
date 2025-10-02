@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { UploadCloud, Edit, Trash2, Loader2 } from "lucide-react";
@@ -111,12 +112,15 @@ export function IDUpload({ id, label, kind, disabled, remoteSrc, onUpload, onRem
       {hasImage && (
         <>
           <div className="h-36 rounded-md border flex items-center justify-center overflow-hidden">
-            <img
+            <Image
               key={currentSrc}
               src={currentSrc}
               alt={`${label} preview`}
+              width={256}
+              height={144}
               className="max-h-full max-w-full cursor-pointer object-contain"
               onClick={() => setLightboxSrc(currentSrc)}
+              unoptimized
             />
           </div>
           <div className="mt-2 flex gap-2">

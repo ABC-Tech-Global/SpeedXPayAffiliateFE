@@ -12,9 +12,9 @@ export default async function OnboardingCard() {
   let payoutReady = false;
   let twofaEnabled = false;
   try {
-    const [kyc, prof, ba] = await Promise.all([getKyc(), getProfile(), getBankAccounts()]);
+    const [kyc, prof, bankData] = await Promise.all([getKyc(), getProfile(), getBankAccounts()]);
     kycStatus = kyc?.kyc?.status || null;
-    const accounts = Array.isArray((ba as any)?.accounts) ? (ba as any).accounts : [];
+    const accounts = bankData.accounts;
     twofaEnabled = Boolean(prof?.profile?.twofaEnabled);
     payoutReady = accounts.length > 0;
   } catch {}
