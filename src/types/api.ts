@@ -6,19 +6,6 @@ export type ProfileResponse = {
   notifications?: { productUpdates?: boolean; payouts?: boolean };
 };
 
-export type KycResponse = {
-  kyc?: {
-    status?: string;
-    rejection_reason?: string | null;
-    full_name?: string;
-    dob?: string;
-    gender?: string;
-    has_id_front?: boolean;
-    has_id_back?: boolean;
-    has_selfie?: boolean;
-  };
-};
-
 export type HistoryItem = { type: string; amount: string | number; description: string; created_at: string };
 export type PayoutsResponse = { balance?: number | string; history?: HistoryItem[]; total?: number | string };
 

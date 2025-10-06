@@ -52,12 +52,6 @@ export const WithdrawRequestSchema = z.object({
   bankAccountId: z.number().int().positive().optional(),
 }).strict()
 
-export const KycUpdateSchema = z.object({
-  fullName: z.string().trim().min(1).max(200),
-  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  gender: z.enum(['female', 'male', '']).optional(),
-}).strict()
-
 export const PayoutsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(200).optional(),
@@ -71,7 +65,7 @@ export const WithdrawalsQuerySchema = z.object({
 
 export const ReferralsQuerySchema = z.object({
   q: z.string().trim().min(1).max(64).optional(),
-  onboarding: z.enum(['Registered','Completed KYC','Bank Account added','Pledge added']).optional(),
+  onboarding: z.enum(['Registered','Bank Account added','Pledge added']).optional(),
   account: z.enum(['onboarding','active','deactivated']).optional(),
   page: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(200).optional(),

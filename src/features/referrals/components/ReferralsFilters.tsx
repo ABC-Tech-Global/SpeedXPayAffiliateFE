@@ -28,7 +28,6 @@ export default function ReferralsFilters() {
         <select id="onboarding" className="h-9 rounded-md border bg-background px-3 text-sm" defaultValue={onboarding} onChange={(e) => setParam('onboarding', e.target.value)}>
           <option value="">All</option>
           <option value="Registered">Registered</option>
-          <option value="Completed KYC">Completed KYC</option>
           <option value="Bank Account added">Bank Account added</option>
           <option value="Pledge added">Pledge added</option>
         </select>

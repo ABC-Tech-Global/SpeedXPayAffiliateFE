@@ -36,6 +36,5 @@ export const config = {
     "/referrals/:path*",
     "/profile/:path*",
     "/payouts/:path*",
-    "/kyc/:path*",
   ],
 };

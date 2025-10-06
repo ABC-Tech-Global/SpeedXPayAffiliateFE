@@ -1,12 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/server-auth";
 import { getReferrals } from "@/lib/api/referrals";
-import { getKyc } from "@/lib/api/kyc";
 import ReferralsFilters from "@/features/referrals/components/ReferralsFilters";
 import InviteBar from "@/features/referrals/components/InviteBar";
 import ReferralsPagination from "@/features/referrals/components/ReferralsPagination";
 import { formatCurrency } from "@/lib/format";
 import { OnboardingBadge, AccountStatusBadge } from "@/components/StatusBadges";
+import { getProfile } from "@/lib/api/users";
 
 type Referral = { username: string; amount_processed: string; onboarding_status?: string; account_status?: string };
 
@@ -24,9 +24,12 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
 
   let referrals: Referral[] = [];
   let count = 0;
-  let kycStatus: string | null = null;
+  const rawBase = (process.env.NEXT_PUBLIC_REFERRAL_BASE || 'https://member.speedxpay.com').trim();
+  const base = rawBase.replace(/\/+$/, '');
+  let referralLink = base;
+  let needsUsername = false;
   try {
-    const [referralsData, kycData] = await Promise.all([
+    const [referralsData, profileData] = await Promise.all([
       getReferrals({
         q: usp.get('q') || undefined,
         onboarding: usp.get('onboarding') || undefined,
@@ -34,11 +37,13 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
         page,
         limit,
       }),
-      getKyc(),
+      getProfile(),
     ]);
     referrals = Array.isArray(referralsData?.referrals) ? (referralsData.referrals as Referral[]) : [];
     count = Number(referralsData?.total || 0);
-    kycStatus = kycData?.kyc?.status || null;
+    const username = String(profileData?.profile?.username || '').trim();
+    needsUsername = username.length === 0;
+    referralLink = username.length > 0 ? `${base}/${encodeURIComponent(username)}` : base;
   } catch {}
 
   const totalAmount = referrals.reduce((sum, r) => sum + Number(r.amount_processed || 0), 0);
@@ -46,7 +51,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <InviteBar kycStatus={kycStatus} />
+      <InviteBar referralLink={referralLink} showUsernameHint={needsUsername} />
       <Card>
         <CardHeader>
           <CardTitle>Referrals</CardTitle>

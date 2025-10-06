@@ -55,13 +55,3 @@ export function OnboardingBadge({ status }: { status: string }) {
       : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
 }
-
-export function KycStatusBadge({ status }: { status: string | null }) {
-  const label = !status ? 'Not started' : (
-    status === 'draft' ? 'In progress' :
-    status === 'pending' ? 'Submitted' :
-    status === 'approved' ? 'Approved' :
-    status === 'rejected' ? 'Rejected' : status
-  );
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${classesFor(status)}`}>{label}</span>;
-}

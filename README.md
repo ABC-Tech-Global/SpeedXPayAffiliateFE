@@ -79,7 +79,7 @@ API: Use the URL supplied by the backend team (http://localhost:4000 if you run 
 
 ## Conventions & Architecture
 
-- Data layer: Server Components call backend endpoints via helpers in `src/lib/api/*` (split by feature: `users.ts`, `kyc.ts`, `referrals.ts`, `payouts.ts`, `withdrawals.ts`). These functions:
+- Data layer: Server Components call backend endpoints via helpers in `src/lib/api/*` (split by feature: `users.ts`, `referrals.ts`, `payouts.ts`, `withdrawals.ts`). These functions:
   - Read the `token` from cookies and set Authorization.
   - Use `no-store` caching and throw on non-OK responses.
   - Return typed data defined in `src/types/api.ts`.
@@ -88,7 +88,7 @@ API: Use the URL supplied by the backend team (http://localhost:4000 if you run 
   - Sets `no-store`, parses JSON, throws `ApiError` with a normalized message on failure.
   - Keeps components focused on UX and removes fetch boilerplate.
 
-- UI badges: Reusable status badges live in `src/components/StatusBadges.tsx` (`StatusPill`, `OnboardingBadge`, `AccountStatusBadge`, `KycStatusBadge`).
+- UI badges: Reusable status badges live in `src/components/StatusBadges.tsx` (`StatusPill`, `OnboardingBadge`, `AccountStatusBadge`).
 
 - Formatting: Use `src/lib/format.ts` for currency/date formatting; do not create ad‑hoc helpers in pages.
 

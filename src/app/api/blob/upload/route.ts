@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       const i = n.lastIndexOf('.')
       return i >= 0 ? n.slice(i) : ''
     })()
-    const key = `kyc/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
+    const key = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
     // put() picks up BLOB_READ_WRITE_TOKEN from env automatically
     const res = await put(key, file, { access: 'public', contentType: file.type || 'application/octet-stream' })
     return NextResponse.json({ pathname: res.pathname, url: res.url })

@@ -7,7 +7,6 @@ import ProfileTab from "./tabs/ProfileTab";
 import BankAccountsTab from "./tabs/BankAccountsTab";
 import SecurityTab from "./tabs/SecurityTab";
 import NotificationsTab from "./tabs/NotificationsTab";
-import KycTab from "./tabs/KycTab";
 
 type Initial = {
   profile: { username?: string; email?: string; phone?: string };
@@ -15,16 +14,16 @@ type Initial = {
   notifications: { productUpdates?: boolean; payouts?: boolean };
 };
 
-type Tab = "profile" | "payment" | "security" | "notifications" | "kyc";
+type Tab = "profile" | "payment" | "security" | "notifications";
 
-export default function ProfileTabs({ initial }: { initial: Initial }) {
+export default function SettingsTabs({ initial }: { initial: Initial }) {
   const pathname = usePathname();
   const [tab, setTab] = React.useState<Tab>("profile");
 
   React.useEffect(() => {
     const readHash = () => {
       const hStr = (typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '');
-      const valid = ['profile','payment','security','notifications','kyc'] as const;
+      const valid = ['profile','payment','security','notifications'] as const;
       if ((valid as readonly string[]).includes(hStr)) setTab(hStr as Tab);
       else {
         if (typeof window !== 'undefined') history.replaceState(null, '', `${pathname}#profile`);
@@ -52,7 +51,6 @@ export default function ProfileTabs({ initial }: { initial: Initial }) {
     <div className="space-y-6">
       <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
         <button type="button" className={tabClass("profile")} onClick={() => goto("profile")}>Profile</button>
-        <button type="button" className={tabClass("kyc")} onClick={() => goto("kyc")}>KYC</button>
         <button type="button" className={tabClass("payment")} onClick={() => goto("payment")}>Payment</button>
         <button type="button" className={tabClass("security")} onClick={() => goto("security")}>Security</button>
         <button type="button" className={tabClass("notifications")} onClick={() => goto("notifications")}>Notifications</button>
@@ -82,11 +80,6 @@ export default function ProfileTabs({ initial }: { initial: Initial }) {
           productUpdates: initial.notifications?.productUpdates ?? true,
           payouts: initial.notifications?.payouts ?? true,
         }} />
-      </section>
-
-      <section className={clsx("space-y-4", tab !== "kyc" && "hidden")} aria-hidden={tab !== "kyc"}>
-        <h2 className="text-lg font-medium">KYC</h2>
-        <KycTab />
       </section>
     </div>
   );

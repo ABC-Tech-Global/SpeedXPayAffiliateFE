@@ -9,7 +9,6 @@ import {
   NotificationsUpdateSchema,
   TwoFAEnableSchema,
   WithdrawRequestSchema,
-  KycUpdateSchema,
 } from './schemas';
 
 // Re-export schemas for existing imports
@@ -22,7 +21,6 @@ export {
   NotificationsUpdateSchema,
   TwoFAEnableSchema,
   WithdrawRequestSchema,
-  KycUpdateSchema,
 };
 
 export function validationError(error: ZodError) {
