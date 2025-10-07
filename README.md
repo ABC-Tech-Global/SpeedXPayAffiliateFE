@@ -2,26 +2,24 @@ SPXA Codex — Next.js + API stack
 
 ## Stack
 - Next.js 15 (App Router), React 19, Tailwind v4
-- Auth via JWT (HttpOnly cookie) validated by a separate API (`server/`)
+- Auth via JWT (HttpOnly cookie) validated by an external API service managed by the backend team
 - Protected routes: `/dashboard`, `/profile`, `/referrals`
 
 ## Prerequisites
 - Node 20+
-- Docker (for Postgres + API)
+- Docker (optional; only if you run the companion API stack locally via its own repository or images)
 
 ## Environment
-Copy `.env.example` to `.env.local` (Next) and `.env` in `server/` if needed. Ensure both share the same `JWT_SECRET`.
+Copy `.env.example` to `.env.local` and fill in the values provided by the backend/API team. `API_URL` should point at the running API (default `http://localhost:4000` when you host it locally) and `JWT_SECRET` must match the API configuration.
 
 ```bash
 cp .env.example .env.local
-# If running API outside docker, also create server/.env accordingly
 ```
 
-For production, start from the provided examples and fill in real values:
+For production, start from the provided example and supply real values:
 
 ```bash
 cp .env.production.example .env.production
-cp server/.env.production.example server/.env.production
 ```
 
 Important:
@@ -30,44 +28,32 @@ Important:
 
 ## Production Checklist
 
-- Env: set `NODE_ENV=production` for both app and API.
+- Env: set `NODE_ENV=production` for the app.
 - Secrets:
-  - `JWT_SECRET` set and identical in app and `server/`.
+  - `JWT_SECRET` set in the app and identical to the value used by the API service.
   - API URL set via `API_URL` (or `NEXT_PUBLIC_API_URL`) in the app.
   - Site URL set via `NEXT_PUBLIC_SITE_URL` (e.g., `https://app.example.com`).
-  - If using Vercel Blob for uploads, set `BLOB_READ_WRITE_TOKEN` in the app for uploads and configure `BLOB_PUBLIC_BASE_URL` (or `NEXT_PUBLIC_BLOB_BASE_URL`) in the API to your public blob domain, e.g. `https://YOURID.public.blob.vercel-storage.com`.
-- Database:
-  - Provide `DATABASE_URL` (preferred) or full `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME` in API.
-  - If your Postgres requires TLS, append `sslmode=require` to `DATABASE_URL`.
-- CORS: set `CORS_ORIGIN` in API to your site origin (e.g., `https://app.example.com`).
+  - If using Vercel Blob for uploads, set `BLOB_READ_WRITE_TOKEN` in the app and confirm the backend exposes assets via its configured blob domain (e.g. `BLOB_PUBLIC_BASE_URL`).
+- Database: coordinate with the backend team so their deployment exposes the correct `DATABASE_URL` (append `sslmode=require` when required).
+- CORS: ensure the API allows your site origin (e.g., `https://app.example.com`).
 - Cookies: secure cookies are enabled automatically in prod (`secure: true`).
 - Build & run:
   - App: `npm ci && npm run build && npm start` (port 3000).
-  - API: `cd server && npm ci && npm run build && npm start` (port 4000).
-- Health checks (API): `GET /health` and `GET /db/health`.
-- Storage: persist `server/uploads/` if using KYC/image uploads.
-  - Vercel Blob: the app stores the full public URL for new uploads. If older rows only contain a path like `kyc/xxx.png`, the API will join it with `BLOB_PUBLIC_BASE_URL` when serving images. Ensure this env is set to avoid broken images.
-- Docker: pass env via platform secrets; ensure the above variables are provided at runtime.
+  - API: follow the backend repository’s deployment guide; the service must run on the same JWT secret and exposed base URL.
+- Health checks (API): `GET /health` and `GET /db/health` (available from the backend service).
+- Storage: verify with the backend team that uploads persist and blob URLs match what the frontend stores.
+- Docker: pass env via platform secrets and coordinate shared values with the backend infrastructure pipeline.
 
-## Run the stack
+## Run the app
 
-Start Postgres and API (via Docker Compose):
-
-```bash
-npm run stack:up
-# or run pieces
-npm run db:up
-npm run api:up
-```
-
-Start the Next.js app:
+Ensure you have an API endpoint from the backend team (local, staging, or production) and set `API_URL` accordingly. Start the frontend:
 
 ```bash
 npm run dev
 ```
 
 App: http://localhost:3000
-API: http://localhost:4000
+API: Use the URL supplied by the backend team (http://localhost:4000 if you run their service locally)
 
 ## Auth flow
 1) Visit `/login` and sign in. On success, the app sets an HttpOnly `token` cookie.
@@ -80,8 +66,8 @@ API: http://localhost:4000
 - `npm start` — Serve production
 - `npm run lint` — Lint
 - `npm run lint:fix` — Lint with autofix
-- `npm run stack:up` — Start DB + API via Docker
-- `npm run stack:logs` — Follow API/DB logs
+- `npm run stack:up` — Optional Docker Compose helper; requires the backend repository/build context to be available locally
+- `npm run stack:logs` — Follow API/DB logs when running the optional Docker stack
 
 ## Project layout
 - `src/app` — App Router
@@ -89,11 +75,11 @@ API: http://localhost:4000
   - `login` — Public login page
 - `src/lib/server-auth.ts` — Server helpers to read cookie and fetch user
 - `src/components` — UI + Navbar/UserMenu
-- `server/` — Express API + Postgres
+- Backend API — lives in a separate repository/service managed by the backend team
 
 ## Conventions & Architecture
 
-- Data layer: Server Components call backend endpoints via helpers in `src/lib/api/*` (split by feature: `users.ts`, `kyc.ts`, `referrals.ts`, `payouts.ts`, `withdrawals.ts`). These functions:
+- Data layer: Server Components call backend endpoints via helpers in `src/lib/api/*` (split by feature: `users.ts`, `referrals.ts`, `payouts.ts`, `withdrawals.ts`). These functions:
   - Read the `token` from cookies and set Authorization.
   - Use `no-store` caching and throw on non-OK responses.
   - Return typed data defined in `src/types/api.ts`.
@@ -102,7 +88,7 @@ API: http://localhost:4000
   - Sets `no-store`, parses JSON, throws `ApiError` with a normalized message on failure.
   - Keeps components focused on UX and removes fetch boilerplate.
 
-- UI badges: Reusable status badges live in `src/components/StatusBadges.tsx` (`StatusPill`, `OnboardingBadge`, `AccountStatusBadge`, `KycStatusBadge`).
+- UI badges: Reusable status badges live in `src/components/StatusBadges.tsx` (`StatusPill`, `OnboardingBadge`, `AccountStatusBadge`).
 
 - Formatting: Use `src/lib/format.ts` for currency/date formatting; do not create ad‑hoc helpers in pages.
 

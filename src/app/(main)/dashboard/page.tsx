@@ -5,7 +5,6 @@ import Link from "next/link";
 import { getPayouts } from "@/lib/api/payouts";
 import { getReferralsAccountBreakdown } from "@/lib/api/referrals";
 import { formatCurrency } from "@/lib/format";
-import CurrentTime from "@/components/CurrentTime";
 import OnboardingCard from "./OnboardingCard";
 import { Suspense } from "react";
 import RecentActivity from "./RecentActivity";
@@ -44,7 +43,6 @@ export default async function DashboardPage() {
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Welcome back, {user.username}</h1>
-        <CurrentTime className="text-xs text-muted-foreground" />
       </div>
 
       <Suspense fallback={

@@ -5,10 +5,10 @@ import {
   ProfileUpdateSchema,
   PaymentUpdateSchema,
   ChangePasswordSchema,
+  ForceResetPasswordSchema,
   NotificationsUpdateSchema,
   TwoFAEnableSchema,
   WithdrawRequestSchema,
-  KycUpdateSchema,
 } from './schemas';
 
 // Re-export schemas for existing imports
@@ -17,10 +17,10 @@ export {
   ProfileUpdateSchema,
   PaymentUpdateSchema,
   ChangePasswordSchema,
+  ForceResetPasswordSchema,
   NotificationsUpdateSchema,
   TwoFAEnableSchema,
   WithdrawRequestSchema,
-  KycUpdateSchema,
 };
 
 export function validationError(error: ZodError) {

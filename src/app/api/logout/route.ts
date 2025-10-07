@@ -13,5 +13,12 @@ export async function POST() {
     sameSite: "lax",
     secure: isHttps,
   });
+  json.cookies.set("first_login_complete", "", {
+    path: "/",
+    maxAge: 0,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isHttps,
+  });
   return json;
 }

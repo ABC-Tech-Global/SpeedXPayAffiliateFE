@@ -13,7 +13,7 @@ src/
     api/                 # Next.js route handlers (server-side only)
   components/            # Reusable UI components
     ui/                  # UI primitives (buttons, inputs, dialog, etc.)
-  features/              # Domain-oriented modules (kyc, referrals, payouts, profile, onboarding)
+  features/              # Domain-oriented modules (referrals, payouts, profile, onboarding)
   lib/                   # Core utilities & data access
     api/                 # Server-side API helpers by domain
   types/                 # Shared TypeScript types (API shapes)
@@ -91,7 +91,7 @@ Why keep `app/api` when `lib/api` exists?
 
 The middleware verifies the `token` cookie for protected paths and redirects to `/login` on failure. It keeps public routes lightweight and enforces consistent auth across the app.
 
-- Matcher covers: `/dashboard`, `/referrals`, `/profile`, `/payouts`, `/kyc`.
+- Matcher covers: `/dashboard`, `/referrals`, `/profile`, `/payouts`.
 - Validation uses `jose.jwtVerify` against `JWT_SECRET` (must match the API’s secret).
 
 Benefits: instant redirect before rendering, prevents flashing unauthenticated UI, and centralizes auth.
@@ -105,7 +105,7 @@ Benefits: instant redirect before rendering, prevents flashing unauthenticated U
 - `validation.ts` + `schemas.ts`: Zod-based validation utilities for API routes.
 - `format.ts`: Currency/date formatting helpers.
 - `url.ts`: Client-side URL helpers (pagination, query param updates).
-- `api/*`: Server-only, domain-focused helpers that call the upstream API (e.g., `users.ts`, `kyc.ts`, `referrals.ts`, `payouts.ts`, `withdrawals.ts`, `bank-accounts.ts`). These:
+- `api/*`: Server-only, domain-focused helpers that call the upstream API (e.g., `users.ts`, `referrals.ts`, `payouts.ts`, `withdrawals.ts`, `bank-accounts.ts`). These:
   - Read the `token` from cookies and set `Authorization`.
   - Use `cache: 'no-store'`.
   - Throw with clear messages on non-OK responses.
@@ -170,7 +170,6 @@ Naming: Components use `PascalCase.tsx`. Keep primitives generic and accessible;
 
 Group feature code by domain to keep pages thin and encourage reuse:
 
-- `features/kyc`: KYC client and widgets
 - `features/referrals`: Filters, tabs, pagination
 - `features/payouts`: Withdraw flow and filters
 - `features/profile`: Tabs, hooks (e.g., 2FA prompt)
@@ -267,4 +266,3 @@ describe('updateUrlParams', () => {
 ---
 
 If you want this document expanded with diagrams or inline links to specific files, let’s add those next.
-

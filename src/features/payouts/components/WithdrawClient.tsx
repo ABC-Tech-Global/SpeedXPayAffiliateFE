@@ -12,11 +12,9 @@ import { formatCurrency } from "@/lib/format";
 import { WithdrawRequestSchema } from "@/lib/schemas";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
-
-type Payment = { bankName?: string; bankAccountNumber?: string };
 type BankAccount = { id: number; bank_name: string; account_number: string; is_default: boolean };
 
-export default function WithdrawClient({ balance, allow, payment }: { balance: number; allow: boolean; payment?: Payment }) {
+export default function WithdrawClient({ balance, allow }: { balance: number; allow: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
   const [amount, setAmount] = React.useState("");
@@ -63,7 +61,7 @@ export default function WithdrawClient({ balance, allow, payment }: { balance: n
   function openDialog() {
     setOpen(true);
     setAccLoading(true);
-    apiFetch<{ accounts?: BankAccount[] }>(`/api/bank-accounts`).then((res) => {
+    apiFetch<{ accounts: BankAccount[] }>(`/api/bank-accounts`).then((res) => {
       const list = Array.isArray(res?.accounts) ? res.accounts : [];
       setAccounts(list);
       const def = list.find(a => a.is_default) || list[0];
@@ -73,12 +71,18 @@ export default function WithdrawClient({ balance, allow, payment }: { balance: n
 
   React.useEffect(() => {
     if (!open) return;
+    let active = true;
     (async () => {
       try {
-        const d = await apiFetch<{ enabled?: boolean }>(`/api/users/2fa`).catch(() => ({ enabled: false } as any));
-        setTwofaEnabled(Boolean(d?.enabled));
-      } catch { setTwofaEnabled(false); }
+        const response = await apiFetch<{ enabled?: boolean }>(`/api/users/2fa`);
+        if (!active) return;
+        setTwofaEnabled(Boolean(response?.enabled));
+      } catch {
+        if (!active) return;
+        setTwofaEnabled(false);
+      }
     })();
+    return () => { active = false; };
   }, [open]);
 
   return (
@@ -156,18 +160,18 @@ export default function WithdrawClient({ balance, allow, payment }: { balance: n
                       <Button type="button" variant="outline" disabled={adding || !newBankName.trim() || !newAccountNumber.trim() || (twofaEnabled && !/^\d{6}$/.test(twofaCode))} onClick={async () => {
                         try {
                           setAdding(true);
-                          const headers = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : {};
+                          const headers: HeadersInit | undefined = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : undefined;
                           const created = await apiFetch<{ account?: BankAccount }>(`/api/bank-accounts`, { method: 'POST', headers, body: JSON.stringify({ bankName: newBankName.trim(), bankAccountNumber: newAccountNumber.trim(), makeDefault: true }) });
                           if (created?.account?.id) {
                             // refresh list
-                            const listRes = await apiFetch<{ accounts?: BankAccount[] }>(`/api/bank-accounts`);
+                            const listRes = await apiFetch<{ accounts: BankAccount[] }>(`/api/bank-accounts`);
                             const list = Array.isArray(listRes?.accounts) ? listRes.accounts : [];
                             setAccounts(list);
                             setSelected(String(created.account.id));
                             setNewBankName(""); setNewAccountNumber(""); setTwofaCode("");
                             toast.success('Bank account added');
                           }
-                        } catch (err: any) {
+                        } catch (err: unknown) {
                           if (err instanceof ApiError && err.status === 400 && String(err.message || '').toLowerCase().includes('2fa')) {
                             setTwofaError('Invalid 2FA code. Please try again.');
                           } else {
@@ -219,19 +223,19 @@ export default function WithdrawClient({ balance, allow, payment }: { balance: n
                 <Button type="button" disabled={adding || !newBankName.trim() || !newAccountNumber.trim() || (twofaEnabled && !/^\d{6}$/.test(twofaCode))} onClick={async () => {
                   try {
                     setAdding(true);
-                    const headers = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : {};
+                    const headers: HeadersInit | undefined = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : undefined;
                     const res = await apiFetch<{ account?: BankAccount }>(`/api/bank-accounts`, { method: 'POST', headers, body: JSON.stringify({ bankName: newBankName.trim(), bankAccountNumber: newAccountNumber.trim(), makeDefault: true }) });
                     if (res?.account?.id) {
                       setCanWithdraw(true);
                       toast.success('Bank account added');
                       // prepare selection list
-                      const listRes = await apiFetch<{ accounts?: BankAccount[] }>(`/api/bank-accounts`);
+                      const listRes = await apiFetch<{ accounts: BankAccount[] }>(`/api/bank-accounts`);
                       const list = Array.isArray(listRes?.accounts) ? listRes.accounts : [];
                       setAccounts(list);
                       setSelected(String(res.account.id));
                       setNewBankName(""); setNewAccountNumber(""); setTwofaCode("");
                     }
-                  } catch (err: any) {
+                  } catch (err: unknown) {
                     if (err instanceof ApiError && err.status === 400 && String(err.message || '').toLowerCase().includes('2fa')) {
                       setTwofaError('Invalid 2FA code. Please try again.');
                     } else {

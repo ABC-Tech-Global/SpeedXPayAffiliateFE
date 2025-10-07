@@ -40,7 +40,7 @@ export default function UserMenu({ user }: Props) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem onClick={() => router.push("/profile" as Route)}>Profile</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push("/settings" as Route)}>Settings</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-red-600 focus:text-red-600"

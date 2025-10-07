@@ -26,8 +26,8 @@ export default function BankAccountsTab() {
   async function load() {
     setLoading(true);
     try {
-      const res = await apiFetch<{ accounts?: BankAccount[] }>("/api/bank-accounts");
-      setAccounts(Array.isArray(res?.accounts) ? res.accounts : []);
+      const res = await apiFetch<{ accounts: BankAccount[] }>("/api/bank-accounts");
+      setAccounts(Array.isArray(res.accounts) ? res.accounts : []);
     } catch {
       setAccounts([]);
     } finally {
@@ -67,7 +67,7 @@ export default function BankAccountsTab() {
         setTwofaError('Enter a valid 6‑digit code');
         return;
       }
-      const headers = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : {};
+      const headers: HeadersInit | undefined = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : undefined;
       const res = await apiFetch<{ account?: BankAccount }>("/api/bank-accounts", {
         method: "POST",
         headers,
@@ -81,7 +81,7 @@ export default function BankAccountsTab() {
         setTwofaCode("");
         await load();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 400 && String(err.message || '').toLowerCase().includes('2fa')) {
         setTwofaError('Invalid 2FA code. Please try again.');
       } else {

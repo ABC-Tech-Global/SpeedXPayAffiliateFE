@@ -45,7 +45,7 @@ export default function AddBankDialogButton() {
     setLoading(true);
     try {
       setTwofaError("");
-      const headers = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : {};
+      const headers: HeadersInit | undefined = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : undefined;
       await apiFetch('/api/bank-accounts', {
         method: 'POST',
         headers,

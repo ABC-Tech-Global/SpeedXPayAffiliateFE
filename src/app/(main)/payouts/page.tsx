@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/server-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { getProfile } from "@/lib/api/users";
 import { getBankAccounts } from "@/lib/api/bank-accounts";
 import { getPayouts } from "@/lib/api/payouts";
 import { getWithdrawals } from "@/lib/api/withdrawals";
@@ -9,9 +8,7 @@ import PayoutsFilters from "@/features/payouts/components/PayoutsFilters";
 import PayoutsPagination from "@/features/payouts/components/PayoutsPagination";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { StatusPill as StatusBadge } from "@/components/StatusBadges";
-
-type Tx = { type: string; amount: string; description: string; created_at: string };
-type Withdrawal = { id: number; amount: number | string; status: string; reviewer_note?: string | null; created_at?: string };
+import type { HistoryItem, Withdrawal } from "@/types/api";
 
 export default async function PayoutsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireUser();
@@ -25,25 +22,22 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
   usp.set('limit', String(limit));
 
   let balance = 0;
-  let history: Tx[] = [];
+  let history: HistoryItem[] = [];
   let total = 0;
   let allowWithdraw = false;
   let withdrawals: Withdrawal[] = [];
-  let paymentInfo: { bankName?: string; bankAccountNumber?: string } | undefined = undefined;
   try {
-    const [payouts, prof, wres, ba] = await Promise.all([
+    const [payouts, wres, bankData] = await Promise.all([
       getPayouts({ page, limit, type: type || undefined }),
-      getProfile(),
       getWithdrawals({ page: 1, limit: 10 }),
       getBankAccounts(),
     ]);
     balance = Number(payouts?.balance || 0);
-    history = Array.isArray(payouts?.history) ? payouts.history as unknown as Tx[] : [];
+    history = Array.isArray(payouts?.history) ? payouts.history : [];
     total = Number(payouts?.total || 0);
-    const accounts = Array.isArray((ba as any)?.accounts) ? (ba as any).accounts : [];
-    paymentInfo = prof?.payment || {};
+    const accounts = bankData.accounts;
     allowWithdraw = accounts.length > 0;
-    withdrawals = Array.isArray(wres?.withdrawals) ? (wres.withdrawals as Withdrawal[]) : [];
+    withdrawals = Array.isArray(wres?.withdrawals) ? wres.withdrawals : [];
   } catch {}
 
   return (
@@ -62,7 +56,7 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
               <div className="text-2xl font-semibold">{formatCurrency(balance)}</div>
             </div>
           </div>
-          <WithdrawClient balance={balance} allow={allowWithdraw} payment={paymentInfo} />
+          <WithdrawClient balance={balance} allow={allowWithdraw} />
         </CardContent>
       </Card>
 
