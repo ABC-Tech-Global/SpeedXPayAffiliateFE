@@ -39,7 +39,6 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 
-USER nextjs
 EXPOSE 8019
 
 CMD ["npm", "run", "start"]
