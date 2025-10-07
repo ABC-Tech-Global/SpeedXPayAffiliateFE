@@ -8,9 +8,6 @@ import { formatCurrency } from "@/lib/format";
 import OnboardingCard from "./OnboardingCard";
 import { Suspense } from "react";
 import RecentActivity from "./RecentActivity";
-
-export const experimental_ppr = true;
-
 export default async function DashboardPage() {
   const user = await requireUser();
 

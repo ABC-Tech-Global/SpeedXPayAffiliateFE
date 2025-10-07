@@ -22,10 +22,6 @@ FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=8019
 
-# Use a non-root user for better security
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 --ingroup nodejs nextjs
-
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
