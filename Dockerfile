@@ -13,6 +13,12 @@ RUN npm ci
 # Build the Next.js app with Turbopack using the dependencies from the previous stage
 FROM base AS builder
 ENV NODE_ENV=production
+
+ENV NEXT_PUBLIC_SITE_URL=https://affiliatespeedxpay.smsmms.xyz
+ENV API_URL=https://affiliateapispeedxpay.smsmms.xyz
+ENV NEXT_PUBLIC_API_URL=https://affiliateapispeedxpay.smsmms.xyz
+ENV JWT_SECRET=ABCDEF1234567890ABCDEF1234567890
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
@@ -21,6 +27,11 @@ RUN npm run build
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=8019
+
+ENV NEXT_PUBLIC_SITE_URL=https://affiliatespeedxpay.smsmms.xyz
+ENV API_URL=https://affiliateapispeedxpay.smsmms.xyz
+ENV NEXT_PUBLIC_API_URL=https://affiliateapispeedxpay.smsmms.xyz
+ENV JWT_SECRET=ABCDEF1234567890ABCDEF1234567890
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
