@@ -45,7 +45,19 @@ export async function POST(req: Request) {
         ?? data?.data?.isFirstLogin
         ?? data?.meta?.isFirstLogin,
     );
-    const json = NextResponse.json({ ok: true, passwordResetRequired });
+    const rawTourSeen =
+      data?.isTourSeen
+      ?? data?.data?.isTourSeen
+      ?? data?.meta?.isTourSeen
+      ?? data?.welcomeTourSeen
+      ?? data?.data?.welcomeTourSeen
+      ?? data?.meta?.welcomeTourSeen;
+    const isTourSeen = typeof rawTourSeen === 'boolean' ? rawTourSeen : undefined;
+    const body: { ok: true; passwordResetRequired: boolean; isTourSeen?: boolean } = { ok: true, passwordResetRequired };
+    if (typeof isTourSeen === 'boolean') {
+      body.isTourSeen = isTourSeen;
+    }
+    const json = NextResponse.json(body);
     const cookieOptions = {
       httpOnly: true,
       sameSite: "lax" as const,
@@ -66,6 +78,12 @@ export async function POST(req: Request) {
       json.cookies.set("first_login_complete", "1", {
         ...cookieOptions,
         maxAge: oneDay,
+      });
+    }
+    if (typeof isTourSeen === 'boolean') {
+      json.cookies.set("tourSeen", isTourSeen ? "1" : "0", {
+        ...cookieOptions,
+        maxAge: isTourSeen ? 60 * 60 * 24 * 365 : 60 * 60 * 24 * 30,
       });
     }
     return json;

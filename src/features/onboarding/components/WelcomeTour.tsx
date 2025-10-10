@@ -4,6 +4,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import type { ProfileResponse } from "@/types/api";
+import { deriveTourSeenFromProfile, readTourSeenCache, writeTourSeenCache } from "@/features/onboarding/utils/tourSeen";
 
 type Step = {
   title: string;
@@ -39,24 +40,53 @@ export default function WelcomeTour({ initialOpen }: { initialOpen?: boolean }) 
 
   // If no server hint was provided, fall back to client check.
   React.useEffect(() => {
-    if (typeof initialOpen !== 'undefined') return;
+    if (typeof initialOpen !== "undefined") {
+      setOpen(Boolean(initialOpen));
+      writeTourSeenCache(initialOpen ? false : true);
+      return;
+    }
+
+    const cached = readTourSeenCache();
+    if (cached === false) {
+      setOpen(true);
+      return;
+    }
+    if (cached === true) {
+      setOpen(false);
+      return;
+    }
+
+    let cancelled = false;
     (async () => {
       try {
-        const prof = await apiFetch<ProfileResponse>('/api/users/profile');
-        const seen = Boolean(prof?.profile?.welcomeTourSeen);
-        if (!seen) setOpen(true);
+        const prof = await apiFetch<ProfileResponse>("/api/users/profile");
+        const seen = deriveTourSeenFromProfile(prof?.profile);
+        if (typeof seen !== "undefined") {
+          writeTourSeenCache(seen);
+          if (!cancelled) setOpen(!seen);
+        }
       } catch {
         // In case of error, do nothing; keep default closed to avoid accidental overlay.
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [initialOpen]);
 
   if (!open || steps.length === 0) return null;
   const step = steps[i];
 
   async function done() {
-    try { await apiFetch('/api/users/tour/seen', { method: 'POST' }); } catch {}
+    try {
+      await apiFetch("/api/update-tour-seen", { method: "POST" });
+      writeTourSeenCache(true);
+    } catch {
+      // Ignore failures; UI still closes but backend might prompt again later.
+    }
     setOpen(false);
+    setI(0);
   }
 
   return (

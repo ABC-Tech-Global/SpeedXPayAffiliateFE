@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import { Check } from "lucide-react";
 import { PasswordFields } from "@/features/auth/components/PasswordFields";
 import { usePasswordEntry } from "@/features/auth/hooks/usePasswordEntry";
+import { usePreviousPasswordOnReset } from "@/features/auth/hooks/usePreviousPassword";
+import { appendPreviousPasswordRequirement } from "@/lib/password-policy";
 
 function PasswordResetInner() {
   const {
@@ -19,15 +21,26 @@ function PasswordResetInner() {
     mismatch,
     reset,
   } = usePasswordEntry();
+  const { previousPassword, isSameAsPrevious } = usePreviousPasswordOnReset(password);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const canSubmit = policySatisfied && !mismatch && !loading && !success;
+  const checklistRequirements = useMemo(
+    () => appendPreviousPasswordRequirement(requirements, previousPassword, password),
+    [requirements, previousPassword, password],
+  );
+
+  const canSubmit =
+    policySatisfied && !mismatch && !isSameAsPrevious && !loading && !success;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (password !== confirm) {
       toast.error("Passwords do not match");
+      return;
+    }
+    if (isSameAsPrevious) {
+      toast.error("New password must be different from your previous password");
       return;
     }
     setSuccess(false);
@@ -67,8 +80,13 @@ function PasswordResetInner() {
             onConfirmChange={setConfirm}
             disabled={loading || success}
             mismatch={mismatch}
-            requirements={requirements}
+            requirements={checklistRequirements}
           />
+          {isSameAsPrevious && (
+            <p className="text-sm text-destructive" role="alert">
+              New password must be different from your previous password.
+            </p>
+          )}
           <Button type="submit" disabled={!canSubmit} className="w-full">
             {success ? (
               <span className="inline-flex items-center gap-2">

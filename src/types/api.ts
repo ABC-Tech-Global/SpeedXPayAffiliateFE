@@ -1,7 +1,14 @@
 // Shared API response types used by both server and client code.
 
 export type ProfileResponse = {
-  profile?: { username?: string; email?: string; phone?: string; twofaEnabled?: boolean; welcomeTourSeen?: boolean };
+  profile?: {
+    username?: string;
+    email?: string;
+    phone?: string;
+    twofaEnabled?: boolean;
+    welcomeTourSeen?: boolean;
+    isTourSeen?: boolean;
+  };
   payment?: { bankName?: string; bankAccountNumber?: string };
   notifications?: { productUpdates?: boolean; payouts?: boolean };
 };
