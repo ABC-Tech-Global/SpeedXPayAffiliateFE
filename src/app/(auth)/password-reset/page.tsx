@@ -2,38 +2,51 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
+import { Check } from "lucide-react";
+import { PasswordFields } from "@/features/auth/components/PasswordFields";
+import { usePasswordEntry } from "@/features/auth/hooks/usePasswordEntry";
 
 function PasswordResetInner() {
-  const [newPassword, setNewPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const {
+    password,
+    confirm,
+    setPassword,
+    setConfirm,
+    requirements,
+    policySatisfied,
+    mismatch,
+    reset,
+  } = usePasswordEntry();
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const canSubmit =
-    newPassword.length >= 6 && newPassword === confirm && !loading;
+  const canSubmit = policySatisfied && !mismatch && !loading && !success;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (newPassword !== confirm) {
+    if (password !== confirm) {
       toast.error("Passwords do not match");
       return;
     }
+    setSuccess(false);
     setLoading(true);
     try {
       await apiFetch("/api/users/force-reset", {
         method: "POST",
-        body: JSON.stringify({ password: newPassword, confirmPassword: confirm }),
+        body: JSON.stringify({ password, confirmPassword: confirm }),
       });
       toast.success("Password updated");
+      setSuccess(true);
+      reset();
       setTimeout(() => {
         window.location.href = "/dashboard";
       }, 500);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to change password";
       toast.error(msg);
+      setSuccess(false);
     } finally {
       setLoading(false);
     }
@@ -47,35 +60,25 @@ function PasswordResetInner() {
           Set a new password to secure your account.
         </p>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="new">New password</Label>
-            <Input
-              id="new"
-              type="password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="At least 6 characters"
-              minLength={6}
-              disabled={loading}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="confirm">Confirm new password</Label>
-            <Input
-              id="confirm"
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              minLength={6}
-              disabled={loading}
-              required
-            />
-          </div>
+          <PasswordFields
+            password={password}
+            confirm={confirm}
+            onPasswordChange={setPassword}
+            onConfirmChange={setConfirm}
+            disabled={loading || success}
+            mismatch={mismatch}
+            requirements={requirements}
+          />
           <Button type="submit" disabled={!canSubmit} className="w-full">
-            {loading ? "Saving…" : "Update password"}
+            {success ? (
+              <span className="inline-flex items-center gap-2">
+                <Check className="size-4" /> Password updated
+              </span>
+            ) : loading ? (
+              "Saving…"
+            ) : (
+              "Update password"
+            )}
           </Button>
         </form>
       </div>

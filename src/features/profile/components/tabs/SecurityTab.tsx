@@ -3,24 +3,33 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import { ChangePasswordSchema, TwoFAEnableSchema } from "@/lib/schemas";
 import QRCode from "@/components/QRCode";
 import { useTwofaPrompt } from "@/features/profile/hooks/useTwofaPrompt";
+import { PasswordFields } from "@/features/auth/components/PasswordFields";
+import { usePasswordEntry } from "@/features/auth/hooks/usePasswordEntry";
 
 function SecurityForm() {
-  const [newPassword, setNewPassword] = React.useState("");
-  const [confirm, setConfirm] = React.useState("");
+  const {
+    password,
+    confirm,
+    setPassword,
+    setConfirm,
+    requirements,
+    policySatisfied,
+    mismatch,
+    reset,
+  } = usePasswordEntry();
   const [loading, setLoading] = React.useState(false);
-  const canSubmit = newPassword.length >= 6 && newPassword === confirm;
+  const canSubmit = policySatisfied && !mismatch && !loading;
 
   const { withTwofa, DialogUI } = useTwofaPrompt();
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (newPassword !== confirm) { toast.error("Passwords do not match"); return; }
-    const parsed = ChangePasswordSchema.safeParse({ newPassword });
+    if (password !== confirm) { toast.error("Passwords do not match"); return; }
+    const parsed = ChangePasswordSchema.safeParse({ newPassword: password });
     if (!parsed.success) { toast.error(parsed.error.issues[0]?.message || 'Invalid input'); return; }
     setLoading(true);
     try {
@@ -28,8 +37,7 @@ function SecurityForm() {
         await apiFetch("/api/users/change-password", { method: "POST", headers, body: JSON.stringify(parsed.data) });
       });
       toast.success("Password changed");
-      setNewPassword("");
-      setConfirm("");
+      reset();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to change password");
     } finally {
@@ -39,14 +47,15 @@ function SecurityForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="grid gap-2">
-        <Label htmlFor="newPassword">New password</Label>
-        <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={loading} required minLength={6} />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="confirm">Confirm new password</Label>
-        <Input id="confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} disabled={loading} required minLength={6} />
-      </div>
+      <PasswordFields
+        password={password}
+        confirm={confirm}
+        onPasswordChange={setPassword}
+        onConfirmChange={setConfirm}
+        disabled={loading}
+        mismatch={mismatch}
+        requirements={requirements}
+      />
       <Button type="submit" disabled={loading || !canSubmit}>{loading ? "Saving…" : "Change password"}</Button>
       {DialogUI}
     </form>
