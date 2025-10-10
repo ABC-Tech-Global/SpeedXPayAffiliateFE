@@ -26,13 +26,9 @@ export async function POST(req: Request) {
 
     const token = typeof data?.token === 'string'
       ? data.token
-      : typeof data?.accessToken === 'string'
-        ? data.accessToken
-        : typeof data?.data?.token === 'string'
-          ? data.data.token
-          : typeof data?.data?.accessToken === 'string'
-            ? data.data.accessToken
-            : null;
+      : typeof data?.data?.token === 'string'
+        ? data.data.token
+        : null;
 
     if (!token) {
       return NextResponse.json({ error: "Login succeeded but no token was returned" }, { status: 502 });

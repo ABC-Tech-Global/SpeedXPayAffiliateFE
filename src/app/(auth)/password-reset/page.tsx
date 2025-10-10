@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,8 +8,6 @@ import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 
 function PasswordResetInner() {
-  const sp = useSearchParams();
-  const nextHref = useMemo(() => sp.get("next") || "/dashboard", [sp]);
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,7 +29,7 @@ function PasswordResetInner() {
       });
       toast.success("Password updated");
       setTimeout(() => {
-        window.location.href = nextHref;
+        window.location.href = "/dashboard";
       }, 500);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to change password";
@@ -87,9 +84,5 @@ function PasswordResetInner() {
 }
 
 export default function PasswordResetPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen grid place-items-center p-6">Loading…</div>}>
-      <PasswordResetInner />
-    </Suspense>
-  );
+  return <PasswordResetInner />;
 }
