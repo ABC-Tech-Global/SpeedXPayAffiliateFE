@@ -9,9 +9,7 @@ import { apiFetch } from "@/lib/api-client";
 import { LoginSchema } from "@/lib/schemas";
 import { Check } from "lucide-react";
 
-type Props = { nextHref: string }
-
-export default function LoginForm({ nextHref }: Props) {
+export default function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,10 +40,9 @@ export default function LoginForm({ nextHref }: Props) {
         const toReset = Boolean(data?.passwordResetRequired);
         if (toReset) {
           const u = new URL('/password-reset', window.location.origin);
-          u.searchParams.set('next', nextHref);
           window.location.href = u.toString();
         } else {
-          window.location.href = nextHref;
+          window.location.href = "/dashboard";
         }
       }, 400);
     } catch (err) {

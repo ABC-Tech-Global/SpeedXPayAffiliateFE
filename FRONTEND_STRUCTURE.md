@@ -36,16 +36,16 @@ server/                  # Express API + Postgres (separate service)
   - Client Components use small internal Next API routes or a generic `apiFetch()` for UI actions.
 - Feature-first organization: domain code lives in `src/features/<domain>/*` and is consumed by routes.
 - Reuse by layers: primitives in `components/ui`, composites in `components`, feature UIs in `features/*/components`.
-- Predictable routing: public routes live at `src/app/login` and `src/app/password-reset`; authenticated routes sit under `src/app/(main)`.
+- Predictable routing: public flows sit under the `(auth)` route group in `src/app/(auth)`, while authenticated pages live in `src/app/(main)`.
 
 
 ## src/app — App Router
 
 This folder contains pages, layouts, loading and error boundaries, and server-only route handlers.
 
-- Route groups for auth: `src/app/(main)` contains authenticated pages and an async layout that enforces auth.
+- Route groups for auth: `src/app/(main)` contains authenticated pages and an async layout that enforces auth, while `src/app/(auth)` holds public entry points.
   - Example: `src/app/(main)/layout.tsx` uses `requireUser()` to redirect unauthenticated requests.
-- Public routes: `src/app/login/[[...login]]/page.tsx` and `src/app/password-reset/page.tsx`.
+- Public routes: `src/app/(auth)/login/page.tsx` and `src/app/(auth)/password-reset/page.tsx`.
 - Streaming: pages may wrap expensive components in `React.Suspense` with `loading.tsx` fallbacks.
 - API route handlers: `src/app/api/*/route.ts` are server-only handlers used for client-driven actions (login, logout, uploads, etc.). These can read cookies and safely talk to the upstream API.
 
@@ -63,15 +63,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 }
 ```
 
-Public login page computing next target (`src/app/login/[[...login]]/page.tsx`):
+Public login page (`src/app/(auth)/login/page.tsx`):
 ```tsx
-export default async function LoginPage({ params, searchParams }) {
-  const sp = await searchParams
-  const p = await params
-  const path = p.login?.length ? `/${p.login.join('/')}` : '/'
-  const target = path === '/' ? '/dashboard' : path
-  const nextHref = `${target}${new URLSearchParams(sp).toString() ? `?${new URLSearchParams(sp)}` : ''}`
-  // Render <LoginForm nextHref={nextHref} />
+export default function LoginPage() {
+  // Render <LoginForm />
 }
 ```
 

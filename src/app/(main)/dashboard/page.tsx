@@ -5,9 +5,9 @@ import Link from "next/link";
 import { getPayouts } from "@/lib/api/payouts";
 import { getReferralsAccountBreakdown } from "@/lib/api/referrals";
 import { formatCurrency } from "@/lib/format";
-import OnboardingCard from "./OnboardingCard";
+import OnboardingCard from "@/components/pages/dashboard/OnboardingCard";
 import { Suspense } from "react";
-import RecentActivity from "./RecentActivity";
+import RecentActivity from "@/components/pages/dashboard/RecentActivity";
 export default async function DashboardPage() {
   const user = await requireUser();
 
@@ -112,4 +112,4 @@ export default async function DashboardPage() {
   );
 }
 
-// Dynamic OnboardingCard moved to ./OnboardingCard and streamed via Suspense
+// Dynamic OnboardingCard is streamed via Suspense for faster dashboard paint
