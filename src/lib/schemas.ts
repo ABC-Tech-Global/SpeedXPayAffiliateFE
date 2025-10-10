@@ -22,12 +22,24 @@ export const PaymentUpdateSchema = z.object({
 }).strict()
 
 export const ChangePasswordSchema = z.object({
-  newPassword: z.string().min(6),
+  newPassword: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters" })
+    .regex(/[A-Z]/, { message: "Password must include an uppercase letter" })
+    .regex(/[a-z]/, { message: "Password must include a lowercase letter" })
+    .regex(/\d/, { message: "Password must include a number" })
+    .regex(/[!%*?&)]+/, { message: "Password must include a special character (! % * ? & )" }),
 }).strict()
 
 export const ForceResetPasswordSchema = z.object({
-  password: z.string().min(6),
-  confirmPassword: z.string().min(6),
+  password: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters" })
+    .regex(/[A-Z]/, { message: "Password must include an uppercase letter" })
+    .regex(/[a-z]/, { message: "Password must include a lowercase letter" })
+    .regex(/\d/, { message: "Password must include a number" })
+    .regex(/[!%*?&)]+/, { message: "Password must include a special character (! % * ? & )" }),
+  confirmPassword: z.string().min(8, { message: "Password must be at least 8 characters" }),
 }).superRefine((value, ctx) => {
   if (value.password !== value.confirmPassword) {
     ctx.addIssue({
