@@ -8,6 +8,11 @@ import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import { LoginSchema } from "@/lib/schemas";
 import { Check } from "lucide-react";
+import {
+  clearRememberedPasswordForReset,
+  rememberPreviousPasswordForReset,
+} from "@/features/auth/hooks/usePreviousPassword";
+import { writeTourSeenCache } from "@/features/onboarding/utils/tourSeen";
 
 export default function LoginForm() {
   const [username, setUsername] = useState("");
@@ -30,14 +35,24 @@ export default function LoginForm() {
         toast.error(msg);
         return;
       }
-      const data = await apiFetch<{ ok: boolean; passwordResetRequired?: boolean }>(`/api/login`, {
+      const data = await apiFetch<{ ok: boolean; passwordResetRequired?: boolean; isTourSeen?: boolean }>(`/api/login`, {
         method: "POST",
         body: JSON.stringify(parsed.data),
       });
+      if (typeof data?.isTourSeen === "boolean") {
+        writeTourSeenCache(data.isTourSeen);
+      }
       setSuccess(true);
       // Give users brief visual feedback before redirecting
+      const toReset = Boolean(data?.passwordResetRequired);
+      if (toReset) {
+        // Keep the password momentarily so the reset screen can block reuse
+        rememberPreviousPasswordForReset(password);
+      } else {
+        clearRememberedPasswordForReset();
+      }
+
       setTimeout(() => {
-        const toReset = Boolean(data?.passwordResetRequired);
         if (toReset) {
           const u = new URL('/password-reset', window.location.origin);
           window.location.href = u.toString();
@@ -55,7 +70,7 @@ export default function LoginForm() {
   }
 
   const canSubmit =
-    username.trim().length > 0 && password.length >= 6 && !loading && !success;
+    username.trim().length > 0 && password.length >= 8 && !loading && !success;
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -83,7 +98,7 @@ export default function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
-          minLength={6}
+          minLength={8}
           required
           disabled={loading || success}
         />

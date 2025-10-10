@@ -37,3 +37,21 @@ export function isPasswordPolicySatisfied(
 
 export const PASSWORD_PLACEHOLDER =
   "At least 8 characters with upper, lower, number, and special";
+
+export function appendPreviousPasswordRequirement(
+  items: PasswordRequirementResult[],
+  previousPassword: string | null,
+  currentPassword: string,
+): PasswordRequirementResult[] {
+  if (!previousPassword) return items;
+
+  return [
+    ...items,
+    {
+      id: "not-previous",
+      label: "Different from your previous password",
+      test: (value: string) => value !== previousPassword,
+      met: currentPassword !== previousPassword,
+    },
+  ];
+}

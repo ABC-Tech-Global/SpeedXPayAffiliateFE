@@ -4,6 +4,7 @@ import { API_URL } from "@/lib/config"
 import { ProfileUpdateSchema, parseJson, validationError } from "@/lib/validation"
 import { ZodError } from "zod"
 import type { ProfileResponse } from "@/types/api"
+import { deriveTourSeenFromProfile } from "@/features/onboarding/utils/tourSeen"
 
 export async function GET() {
   const cookieStore = await cookies()
@@ -30,8 +31,11 @@ export async function GET() {
 
     const json = NextResponse.json(resp, { status: 200 })
     // Mirror server truth in a cookie for SSR hints (optional)
-    if (profile && typeof profile.welcomeTourSeen !== 'undefined' && profile.welcomeTourSeen) {
+    const seen = deriveTourSeenFromProfile(profile as ProfileResponse["profile"]);
+    if (seen === true) {
       json.cookies.set('tourSeen', '1', { path: '/', maxAge: 60 * 60 * 24 * 365 })
+    } else if (seen === false) {
+      json.cookies.set('tourSeen', '0', { path: '/', maxAge: 60 * 60 * 24 * 30 })
     }
     return json
   } catch {
