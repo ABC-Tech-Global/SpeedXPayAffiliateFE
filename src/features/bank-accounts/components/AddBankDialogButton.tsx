@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,12 +9,25 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { useAffiliateBankOptions } from "../hooks/useAffiliateBankOptions";
 import { useCreateAffiliateBank } from "../hooks/useCreateAffiliateBank";
 import { useTwoFactorStatus } from "../hooks/useTwoFactorStatus";
 
 const ACCOUNT_NAME_MIN = 2;
 const ACCOUNT_NAME_MAX = 100;
+
+type ButtonVariant = React.ComponentProps<typeof Button>["variant"];
+type ButtonSize = React.ComponentProps<typeof Button>["size"];
+
+type AddBankDialogButtonProps = {
+  label?: string;
+  onSuccess?: () => void | Promise<void>;
+  disabled?: boolean;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+};
 
 function validateBankSelection(value: string): string {
   const parsed = Number.parseInt(value, 10);
@@ -41,9 +53,15 @@ function validateTwofaCode(value: string, required: boolean): string {
   return /^\d{6}$/.test(trimmed) ? "" : "Enter a valid 6-digit code";
 }
 
-export default function AddBankDialogButton() {
+export function AddBankDialogButton({
+  label = "Add bank account",
+  onSuccess,
+  disabled,
+  variant = "default",
+  size = "default",
+  className,
+}: AddBankDialogButtonProps) {
   const [open, setOpen] = React.useState(false);
-  const router = useRouter();
 
   const { options: bankOptions, loading: banksLoading, error: banksError } = useAffiliateBankOptions(open);
   const twofaEnabled = useTwoFactorStatus(open);
@@ -87,65 +105,6 @@ export default function AddBankDialogButton() {
     }
   }, [twofaEnabled]);
 
-  const handleSubmit = React.useCallback(async () => {
-    setBankFieldTouched(true);
-    setAccountNameTouched(true);
-    setAccountNumberTouched(true);
-    if (twofaEnabled) {
-      setTwofaTouched(true);
-    }
-
-    const trimmedName = accountHolderName.trim();
-    const trimmedNumber = accountNumber.trim();
-
-    const bankValidationMessage = validateBankSelection(selectedBankType);
-    const nameValidationMessage = validateAccountHolderName(accountHolderName);
-    const numberValidationMessage = validateAccountNumber(accountNumber);
-    const twofaValidationMessage = validateTwofaCode(twofaCode, twofaEnabled);
-
-    setBankFieldError(bankValidationMessage);
-    setAccountNameError(nameValidationMessage);
-    setAccountNumberError(numberValidationMessage);
-    setTwofaError(twofaValidationMessage);
-
-    if (bankValidationMessage || nameValidationMessage || numberValidationMessage || twofaValidationMessage) {
-      return;
-    }
-
-    const bankType = Number.parseInt(selectedBankType, 10);
-
-    const { success, message, fieldErrors } = await createAffiliateBank({
-      bankType,
-      accountName: trimmedName,
-      accountNumber: trimmedNumber,
-      twofaCode: twofaEnabled ? twofaCode : undefined,
-    });
-
-    if (success) {
-      toast.success(message || "Bank details saved");
-      setOpen(false);
-      resetForm();
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem("onboardingJustCompleted", "1");
-      }
-      router.refresh();
-      return;
-    }
-
-    if (fieldErrors?.accountName) setAccountNameError(fieldErrors.accountName);
-    if (fieldErrors?.accountNumber) setAccountNumberError(fieldErrors.accountNumber);
-    if (fieldErrors?.accountName) setAccountNameTouched(true);
-    if (fieldErrors?.accountNumber) setAccountNumberTouched(true);
-    if (fieldErrors?.twofa) {
-      setTwofaError(fieldErrors.twofa);
-      setTwofaTouched(true);
-    }
-
-    if (!fieldErrors?.accountName && !fieldErrors?.accountNumber && !fieldErrors?.twofa) {
-      toast.error(message || "Failed to add bank details");
-    }
-  }, [accountHolderName, accountNumber, createAffiliateBank, resetForm, router, selectedBankType, twofaCode, twofaEnabled]);
-
   const bankValidationMessage = validateBankSelection(selectedBankType);
   const accountNameValidationMessage = validateAccountHolderName(accountHolderName);
   const accountNumberValidationMessage = validateAccountNumber(accountNumber);
@@ -159,10 +118,88 @@ export default function AddBankDialogButton() {
     !banksLoading &&
     !submitLoading;
 
+  const handleSubmit = React.useCallback(async () => {
+    setBankFieldTouched(true);
+    setAccountNameTouched(true);
+    setAccountNumberTouched(true);
+    if (twofaEnabled) setTwofaTouched(true);
+
+    const bankValidation = validateBankSelection(selectedBankType);
+    const nameValidation = validateAccountHolderName(accountHolderName);
+    const numberValidation = validateAccountNumber(accountNumber);
+    const twofaValidation = validateTwofaCode(twofaCode, twofaEnabled);
+
+    setBankFieldError(bankValidation);
+    setAccountNameError(nameValidation);
+    setAccountNumberError(numberValidation);
+    setTwofaError(twofaValidation);
+
+    if (bankValidation || nameValidation || numberValidation || twofaValidation) {
+      return;
+    }
+
+    const bankType = Number.parseInt(selectedBankType, 10);
+    const trimmedName = accountHolderName.trim();
+    const trimmedNumber = accountNumber.trim();
+
+    const { success, message, fieldErrors } = await createAffiliateBank({
+      bankType,
+      accountName: trimmedName,
+      accountNumber: trimmedNumber,
+      twofaCode: twofaEnabled ? twofaCode : undefined,
+    });
+
+    if (success) {
+      toast.success(message || "Bank details saved");
+      setOpen(false);
+      resetForm();
+      try {
+        await onSuccess?.();
+      } catch {
+        // Ignore downstream errors so dialog can close gracefully
+      }
+      return;
+    }
+
+    if (fieldErrors?.accountName) {
+      setAccountNameError(fieldErrors.accountName);
+      setAccountNameTouched(true);
+    }
+    if (fieldErrors?.accountNumber) {
+      setAccountNumberError(fieldErrors.accountNumber);
+      setAccountNumberTouched(true);
+    }
+    if (fieldErrors?.twofa) {
+      setTwofaError(fieldErrors.twofa);
+      setTwofaTouched(true);
+    }
+
+    if (!fieldErrors?.accountName && !fieldErrors?.accountNumber && !fieldErrors?.twofa) {
+      toast.error(message || "Failed to add bank details");
+    }
+  }, [
+    accountHolderName,
+    accountNumber,
+    createAffiliateBank,
+    onSuccess,
+    resetForm,
+    selectedBankType,
+    twofaCode,
+    twofaEnabled,
+  ]);
+
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        Add details
+      <Button
+        size={size}
+        variant={variant}
+        className={className}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) setOpen(true);
+        }}
+      >
+        {label}
       </Button>
       <Dialog
         open={open}
@@ -178,7 +215,7 @@ export default function AddBankDialogButton() {
           <div className="relative">
             {banksLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             )}
             <div className={`space-y-3 ${banksLoading ? "pointer-events-none opacity-50" : ""}`}>
@@ -199,23 +236,23 @@ export default function AddBankDialogButton() {
                   }}
                   disabled={banksLoading || bankOptions.length === 0}
                 >
-                  <SelectTrigger
-                    id="bankName"
-                    className="w-full"
-                    aria-invalid={bankFieldTouched && Boolean(bankFieldError)}
-                  >
-                    <SelectValue placeholder={banksLoading ? "Loading banks..." : "Select a bank"} />
+                  <SelectTrigger id="bankName">
+                    <SelectValue placeholder={bankOptions.length ? "Select a bank" : banksError || "No banks available"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {bankOptions.map((bank) => (
-                      <SelectItem key={bank.type} value={String(bank.type)}>
-                        {bank.name}
+                    {bankOptions.map((option) => (
+                      <SelectItem key={option.type} value={String(option.type)}>
+                        {option.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {banksError && <div className="text-xs text-red-600">{banksError}</div>}
-                {bankFieldError && <div className="text-xs text-red-600">{bankFieldError}</div>}
+                {bankFieldTouched && bankFieldError && (
+                  <p className="text-xs text-destructive">{bankFieldError}</p>
+                )}
+                {banksError && !bankOptions.length && !banksLoading && (
+                  <p className="text-xs text-destructive">{banksError}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -223,53 +260,46 @@ export default function AddBankDialogButton() {
                 <Input
                   id="accountHolderName"
                   value={accountHolderName}
-                  maxLength={ACCOUNT_NAME_MAX}
                   onChange={(event) => {
                     const value = event.target.value;
                     setAccountHolderName(value);
                     if (accountNameTouched) {
                       setAccountNameError(validateAccountHolderName(value));
-                    } else if (accountNameError) {
-                      setAccountNameError("");
                     }
                   }}
-                  onBlur={(event) => {
+                  onBlur={() => {
                     setAccountNameTouched(true);
-                    setAccountNameError(validateAccountHolderName(event.target.value));
+                    setAccountNameError(validateAccountHolderName(accountHolderName));
                   }}
-                  aria-invalid={accountNameTouched && Boolean(accountNameError)}
                   required
                 />
-                {accountNameError && <div className="text-xs text-red-600">{accountNameError}</div>}
+                {accountNameTouched && accountNameError && (
+                  <p className="text-xs text-destructive">{accountNameError}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="bankAccountNumber">Bank account number</Label>
+                <Label htmlFor="accountNumber">Account number</Label>
                 <Input
-                  id="bankAccountNumber"
-                  inputMode="numeric"
-                  pattern="\d*"
-                  maxLength={20}
+                  id="accountNumber"
                   value={accountNumber}
+                  inputMode="numeric"
                   onChange={(event) => {
-                    const digitsOnly = event.target.value.replace(/[^0-9]/g, "").slice(0, 20);
-                    setAccountNumber(digitsOnly);
+                    const value = event.target.value.replace(/[^0-9]/g, "");
+                    setAccountNumber(value);
                     if (accountNumberTouched) {
-                      setAccountNumberError(validateAccountNumber(digitsOnly));
-                    } else if (accountNumberError) {
-                      setAccountNumberError("");
+                      setAccountNumberError(validateAccountNumber(value));
                     }
                   }}
-                  onBlur={(event) => {
+                  onBlur={() => {
                     setAccountNumberTouched(true);
-                    const digitsOnly = event.target.value.replace(/[^0-9]/g, "").slice(0, 20);
-                    setAccountNumber(digitsOnly);
-                    setAccountNumberError(validateAccountNumber(digitsOnly));
+                    setAccountNumberError(validateAccountNumber(accountNumber));
                   }}
-                  aria-invalid={accountNumberTouched && Boolean(accountNumberError)}
                   required
                 />
-                {accountNumberError && <div className="text-xs text-red-600">{accountNumberError}</div>}
+                {accountNumberTouched && accountNumberError && (
+                  <p className="text-xs text-destructive">{accountNumberError}</p>
+                )}
               </div>
 
               {twofaEnabled && (
@@ -277,37 +307,33 @@ export default function AddBankDialogButton() {
                   <Label htmlFor="twofaCode">Two-factor code</Label>
                   <Input
                     id="twofaCode"
-                    inputMode="numeric"
-                    pattern="\d*"
-                    maxLength={6}
-                    placeholder="123456"
                     value={twofaCode}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="000000"
                     onChange={(event) => {
-                      const digitsOnly = event.target.value.replace(/[^0-9]/g, "").slice(0, 6);
-                      setTwofaCode(digitsOnly);
+                      const value = event.target.value.replace(/[^0-9]/g, "");
+                      setTwofaCode(value);
                       if (twofaTouched) {
-                        setTwofaError(validateTwofaCode(digitsOnly, true));
-                      } else if (twofaError) {
-                        setTwofaError("");
+                        setTwofaError(validateTwofaCode(value, true));
                       }
                     }}
-                    onBlur={(event) => {
-                      if (!twofaEnabled) return;
+                    onBlur={() => {
                       setTwofaTouched(true);
-                      const digitsOnly = event.target.value.replace(/[^0-9]/g, "").slice(0, 6);
-                      setTwofaCode(digitsOnly);
-                      setTwofaError(validateTwofaCode(digitsOnly, true));
+                      setTwofaError(validateTwofaCode(twofaCode, true));
                     }}
-                    aria-invalid={twofaTouched && Boolean(twofaError)}
                   />
-                  {twofaError && <div className="text-xs text-red-600">{twofaError}</div>}
+                  {twofaTouched && twofaError && (
+                    <p className="text-xs text-destructive">{twofaError}</p>
+                  )}
                 </div>
               )}
             </div>
           </div>
+
           <DialogFooter>
             <Button onClick={handleSubmit} disabled={!canSubmit}>
-              {submitLoading ? "Saving…" : "Save"}
+              {submitLoading ? "Saving…" : "Save account"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -315,3 +341,5 @@ export default function AddBankDialogButton() {
     </>
   );
 }
+
+export default AddBankDialogButton;

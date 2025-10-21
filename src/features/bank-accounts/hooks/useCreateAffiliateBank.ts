@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+
 import { apiFetch, ApiError } from "@/lib/api-client";
+
 import type { CreateAffiliateBankResponse } from "../types";
 import { evaluateCreateAffiliateBankResponse } from "../utils";
 

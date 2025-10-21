@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import AddBankDialogButton from "@/features/onboarding/components/AddBankDialogButton";
+import AddBankDialogButton from "@/features/bank-accounts/components/AddBankDialogButton";
 import type { OnboardingOverview } from "@/types/api";
 
 const STORAGE_KEY = "onboardingJustCompleted";
@@ -23,6 +24,14 @@ export default function OnboardingCard({ overview }: OnboardingCardProps) {
 
   const initialState: DisplayState = requiresSetup ? "cta" : "hidden";
   const [displayState, setDisplayState] = React.useState<DisplayState>(initialState);
+  const router = useRouter();
+
+  const handleSuccess = React.useCallback(async () => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(STORAGE_KEY, "1");
+    }
+    router.refresh();
+  }, [router]);
 
   React.useEffect(() => {
     if (requiresSetup) {
@@ -85,7 +94,12 @@ export default function OnboardingCard({ overview }: OnboardingCardProps) {
             <div className="font-medium">Add payout bank details</div>
             <div className="text-xs text-muted-foreground">Required to submit payout requests</div>
           </div>
-          <AddBankDialogButton />
+          <AddBankDialogButton
+            label="Add details"
+            size="sm"
+            variant="outline"
+            onSuccess={handleSuccess}
+          />
         </div>
       </CardContent>
     </Card>

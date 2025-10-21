@@ -1,164 +1,187 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { apiFetch, ApiError } from "@/lib/api-client";
-import { useTwofaPrompt } from "@/features/profile/hooks/useTwofaPrompt";
 
-type BankAccount = { id: number; bank_name: string; account_number: string; is_default: boolean };
+import { Button } from "@/components/ui/button";
+
+import { apiFetch } from "@/lib/api-client";
+import { useTwofaPrompt } from "@/features/profile/hooks/useTwofaPrompt";
+import { AddBankDialogButton } from "@/features/bank-accounts/components/AddBankDialogButton";
+import { useAffiliateBankOptions } from "@/features/bank-accounts/hooks/useAffiliateBankOptions";
+
+type AffiliateAccount = {
+  id: number;
+  bankType: number;
+  accountName: string;
+  accountNumber: string;
+  isActive: boolean;
+  bankLabel?: string;
+};
+
+const MAX_ACCOUNTS = 5;
+const ACCOUNT_LIST_REQUEST = {
+  accountType: 3,
+  isActive: 0,
+  pageIndex: 0,
+  pageSize: 5,
+};
+
+function toNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number.parseInt(value.trim(), 10);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function toBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "active";
+  }
+  return false;
+}
+
+function trimString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeAffiliateAccounts(payload: unknown): AffiliateAccount[] {
+  const container = payload && typeof payload === "object"
+    ? (payload as { data?: unknown })
+    : undefined;
+  const source = Array.isArray(container?.data)
+    ? (container!.data as unknown[])
+    : Array.isArray(payload)
+      ? (payload as unknown[])
+      : [];
+
+  const result: AffiliateAccount[] = [];
+
+  for (const item of source) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+
+    const id = toNumber(record.id ?? record.ID);
+    const bankType = toNumber(record.bankType ?? record.BankType ?? record.type);
+    const accountName = trimString(record.accountName ?? record.AccountName);
+    const accountNumber = trimString(record.accountNumber ?? record.AccountNumber);
+    const bankLabel = trimString(record.bank ?? record.bankName ?? record.BankName);
+    const isActive = toBoolean(record.isActive ?? record.IsActive ?? record.active);
+
+    if (typeof id === "undefined" || typeof bankType === "undefined") continue;
+    if (!accountName || !accountNumber) continue;
+
+    result.push({
+      id,
+      bankType,
+      accountName,
+      accountNumber,
+      bankLabel: bankLabel || undefined,
+      isActive,
+    });
+  }
+
+  return result;
+}
 
 export default function BankAccountsTab() {
-  const [accounts, setAccounts] = React.useState<BankAccount[]>([]);
+  const [accounts, setAccounts] = React.useState<AffiliateAccount[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [open, setOpen] = React.useState(false);
-  const [bankName, setBankName] = React.useState("");
-  const [accountNumber, setAccountNumber] = React.useState("");
-  const [submitting, setSubmitting] = React.useState(false);
-  const [twofaEnabled, setTwofaEnabled] = React.useState(false);
-  const [twofaCode, setTwofaCode] = React.useState("");
-  const [twofaError, setTwofaError] = React.useState("");
   const { withTwofa, DialogUI } = useTwofaPrompt();
+  const { options: bankOptions } = useAffiliateBankOptions(true);
 
-  async function load() {
+  const bankNameByType = React.useMemo(() => {
+    const map = new Map<number, string>();
+    bankOptions.forEach((option) => {
+      map.set(option.type, option.name);
+    });
+    return map;
+  }, [bankOptions]);
+
+  const resolveBankName = React.useCallback((account: AffiliateAccount) => {
+    return bankNameByType.get(account.bankType) ?? account.bankLabel ?? `Bank #${account.bankType}`;
+  }, [bankNameByType]);
+
+  const loadAccounts = React.useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch<{ accounts: BankAccount[] }>("/api/bank-accounts");
-      setAccounts(Array.isArray(res.accounts) ? res.accounts : []);
+      const response = await apiFetch<unknown>("/api/BankAccount/getaffaccountlist", {
+        method: "POST",
+        body: JSON.stringify(ACCOUNT_LIST_REQUEST),
+      });
+      const list = normalizeAffiliateAccounts(response).slice(0, MAX_ACCOUNTS);
+      setAccounts(list);
     } catch {
       setAccounts([]);
     } finally {
       setLoading(false);
     }
-  }
-
-  React.useEffect(() => { load(); }, []);
+  }, []);
 
   React.useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    (async () => {
-      try {
-        const d = await apiFetch<{ enabled?: boolean }>("/api/users/2fa");
-        if (!alive) return;
-        setTwofaEnabled(Boolean(d?.enabled));
-      } catch {
-        setTwofaEnabled(false);
-      }
-    })();
-    return () => { alive = false };
-  }, [open]);
+    loadAccounts();
+  }, [loadAccounts]);
 
-  const canAddMore = accounts.length < 3;
+  const canAddMore = accounts.length < MAX_ACCOUNTS;
   const empty = !loading && accounts.length === 0;
-
-  async function onAdd(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!canAddMore) return;
-    const name = bankName.trim();
-    const number = accountNumber.trim();
-    if (!name || !number) return;
-    setSubmitting(true);
-    try {
-      if (twofaEnabled && !/^\d{6}$/.test(twofaCode)) {
-        setTwofaError('Enter a valid 6‑digit code');
-        return;
-      }
-      const headers: HeadersInit | undefined = twofaEnabled && twofaCode ? { 'x-2fa-code': twofaCode } : undefined;
-      const res = await apiFetch<{ account?: BankAccount }>("/api/bank-accounts", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ bankName: name, bankAccountNumber: number, makeDefault: accounts.length === 0 }),
-      });
-      if (res?.account?.id) {
-        toast.success("Bank account added");
-        setOpen(false);
-        setBankName("");
-        setAccountNumber("");
-        setTwofaCode("");
-        await load();
-      }
-    } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 400 && String(err.message || '').toLowerCase().includes('2fa')) {
-        setTwofaError('Invalid 2FA code. Please try again.');
-      } else {
-        toast.error(err instanceof Error ? err.message : "Failed to add bank account");
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   return (
     <div className="space-y-4">
       {empty ? (
         <div className="rounded-lg border p-6 text-center">
           <div className="text-base font-medium">No bank accounts yet</div>
-          <div className="text-sm text-muted-foreground mt-1">Add a bank account to receive withdrawals. You can add up to 3 accounts.</div>
+          <div className="mt-1 text-sm text-muted-foreground">Add a bank account to receive withdrawals. You can add up to {MAX_ACCOUNTS} accounts.</div>
           <div className="mt-4">
-            <Button onClick={() => setOpen(true)}>Add bank account</Button>
+            <AddBankDialogButton
+              onSuccess={loadAccounts}
+              disabled={!canAddMore}
+            />
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">You can add up to 3 bank accounts.</div>
-            <Button onClick={() => setOpen(true)} disabled={!canAddMore}>Add bank account</Button>
+            <div className="text-sm text-muted-foreground">You can add up to {MAX_ACCOUNTS} bank accounts.</div>
+            <AddBankDialogButton
+              onSuccess={loadAccounts}
+              disabled={!canAddMore}
+            />
           </div>
-          <div className="rounded-lg border">
+          <div className="overflow-hidden rounded-lg border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-muted-foreground border-b">
-                  <th className="py-2 px-4">Bank</th>
-                  <th className="py-2 px-4">Account number</th>
-                  <th className="py-2 px-4">Default</th>
-                  <th className="py-2 px-4 text-right">Actions</th>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="px-4 py-2">Bank</th>
+                  <th className="px-4 py-2">Account name</th>
+                  <th className="px-4 py-2">Account no.</th>
                 </tr>
               </thead>
               <tbody>
-                {(loading ? [] : accounts).map((a) => (
-                  <tr key={a.id} className="border-b last:border-0">
-                    <td className="py-2 px-4">{a.bank_name}</td>
-                    <td className="py-2 px-4">{a.account_number}</td>
-                    <td className="py-2 px-4">{a.is_default ? <span className="inline-flex rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">Default</span> : ''}</td>
-                    <td className="py-2 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {!a.is_default && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                await withTwofa(async (headers) => {
-                                  await apiFetch(`/api/bank-accounts/${a.id}/default`, { method: 'POST', headers });
-                                });
-                                toast.success('Default account updated');
-                                await load();
-                              } catch (err) {
-                                if (err instanceof Error && err.message.includes('2fa')) return;
-                                toast.error(err instanceof Error ? err.message : 'Failed to set default');
-                              }
-                            }}
-                          >
-                            Set default
-                          </Button>
-                        )}
+                {(loading ? [] : accounts).map((account) => (
+                  <tr key={account.id} className="border-b last:border-0">
+                    <td className="px-4 py-2">{resolveBankName(account)}</td>
+                    <td className="px-4 py-2">{account.accountName}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-mono text-xs sm:text-sm">{account.accountNumber}</span>
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={async () => {
                             try {
                               await withTwofa(async (headers) => {
-                                await apiFetch(`/api/bank-accounts/${a.id}`, { method: 'DELETE', headers });
+                                await apiFetch(`/api/bank-accounts/${account.id}`, { method: "DELETE", headers });
                               });
-                              toast.success('Bank account removed');
-                              await load();
+                              toast.success("Bank account removed");
+                              await loadAccounts();
                             } catch (err) {
-                              if (err instanceof Error && err.message.includes('2fa')) return;
-                              toast.error(err instanceof Error ? err.message : 'Failed to remove account');
+                              if (err instanceof Error && err.message.includes("2fa")) return;
+                              toast.error(err instanceof Error ? err.message : "Failed to remove account");
                             }
                           }}
                         >
@@ -170,7 +193,7 @@ export default function BankAccountsTab() {
                 ))}
                 {loading && (
                   <tr>
-                    <td className="py-4 px-4 text-muted-foreground" colSpan={3}>Loading…</td>
+                    <td className="px-4 py-4 text-muted-foreground" colSpan={3}>Loading…</td>
                   </tr>
                 )}
               </tbody>
@@ -179,41 +202,6 @@ export default function BankAccountsTab() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setTwofaCode(''); setTwofaError(''); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add bank account</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={onAdd} className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="bankName">Bank name</Label>
-              <Input id="bankName" value={bankName} onChange={(e) => setBankName(e.target.value)} required />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="bankAccountNumber">Bank account number</Label>
-              <Input id="bankAccountNumber" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} required />
-            </div>
-            {twofaEnabled && (
-              <div className="grid gap-2">
-                <Label htmlFor="twofaCode">Two‑factor code</Label>
-                <Input
-                  id="twofaCode"
-                  inputMode="numeric"
-                  pattern="\d*"
-                  maxLength={6}
-                  placeholder="123456"
-                  value={twofaCode}
-                  onChange={(e) => { setTwofaError(''); setTwofaCode(e.target.value.replace(/[^0-9]/g, '').slice(0,6)); }}
-                />
-                {twofaError && <div className="text-xs text-red-600">{twofaError}</div>}
-              </div>
-            )}
-            <DialogFooter>
-              <Button type="submit" disabled={submitting || !canAddMore || (twofaEnabled && !/^\d{6}$/.test(twofaCode))}>{submitting ? 'Adding…' : 'Add account'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
       {DialogUI}
     </div>
   );
