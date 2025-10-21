@@ -8,10 +8,7 @@ import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import { LoginSchema } from "@/lib/schemas";
 import { Check } from "lucide-react";
-import {
-  clearRememberedPasswordForReset,
-  rememberPreviousPasswordForReset,
-} from "@/features/auth/hooks/usePreviousPassword";
+import { clearRememberedPasswordForReset } from "@/features/auth/hooks/usePreviousPassword";
 import { writeTourSeenCache } from "@/features/onboarding/utils/tourSeen";
 
 export default function LoginForm() {
@@ -45,12 +42,7 @@ export default function LoginForm() {
       setSuccess(true);
       // Give users brief visual feedback before redirecting
       const toReset = Boolean(data?.passwordResetRequired);
-      if (toReset) {
-        // Keep the password momentarily so the reset screen can block reuse
-        rememberPreviousPasswordForReset(password);
-      } else {
-        clearRememberedPasswordForReset();
-      }
+      clearRememberedPasswordForReset();
 
       setTimeout(() => {
         if (toReset) {

@@ -125,6 +125,9 @@ export default function AddBankDialogButton() {
       toast.success(message || "Bank details saved");
       setOpen(false);
       resetForm();
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("onboardingJustCompleted", "1");
+      }
       router.refresh();
       return;
     }

@@ -22,6 +22,15 @@ export type WithdrawalsResponse = { withdrawals?: Withdrawal[]; total?: number |
 export type Referral = { username: string; amount_processed?: string | number; onboarding_status?: string; account_status?: string };
 export type ReferralsResponse = { referrals?: Referral[]; total?: number | string; page?: number | string; limit?: number | string };
 
+export type OnboardingOverview = {
+  requireSetup: boolean;
+  payoutBankCount: number;
+  commissionWalletBalance: number;
+  totalReferrals: number;
+  activeReferrals: number;
+  deactivatedReferrals: number;
+};
+
 export type ReferralDetailResponse = {
   referral?: {
     onboarding_status?: string;
