@@ -2,12 +2,11 @@ import { requireUser } from "@/lib/server-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnnouncementsCarousel } from "@/components/AnnouncementsCarousel";
 import Link from "next/link";
-import { getPayouts } from "@/lib/api/payouts";
-import { getReferralsAccountBreakdown } from "@/lib/api/referrals";
 import { formatCurrency } from "@/lib/format";
 import OnboardingCard from "@/components/pages/dashboard/OnboardingCard";
 import { Suspense } from "react";
 import RecentActivity from "@/components/pages/dashboard/RecentActivity";
+import { getOnboardingOverview } from "@/lib/api/onboarding";
 export default async function DashboardPage() {
   const user = await requireUser();
 
@@ -16,18 +15,18 @@ export default async function DashboardPage() {
   let activeCount = 0;
   let onboardingCount = 0;
   let deactivatedCount = 0;
+  let onboardingOverview: Awaited<ReturnType<typeof getOnboardingOverview>> | null = null;
   // OnboardingCard decides visibility dynamically per request
 
   try {
-    const [pd, breakdown] = await Promise.all([
-      getPayouts({ limit: 5, page: 1 }),
-      getReferralsAccountBreakdown(),
-    ]);
-    balance = Number(pd?.balance || 0);
-    totalReferrals = breakdown.total;
-    activeCount = breakdown.active;
-    onboardingCount = breakdown.onboarding;
-    deactivatedCount = breakdown.deactivated;
+    const overview = await getOnboardingOverview();
+    onboardingOverview = overview;
+    balance = Number(overview.commissionWalletBalance || 0);
+    totalReferrals = overview.totalReferrals;
+    activeCount = overview.activeReferrals;
+    deactivatedCount = overview.deactivatedReferrals;
+    const derivedOnboarding = totalReferrals - activeCount - deactivatedCount;
+    onboardingCount = derivedOnboarding > 0 ? derivedOnboarding : 0;
   } catch {}
 
   const totalBreakdown = [
@@ -48,7 +47,7 @@ export default async function DashboardPage() {
           <CardContent><div className="h-20" /></CardContent>
         </Card>
       }>
-        <OnboardingCard />
+        <OnboardingCard overview={onboardingOverview} />
       </Suspense>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
