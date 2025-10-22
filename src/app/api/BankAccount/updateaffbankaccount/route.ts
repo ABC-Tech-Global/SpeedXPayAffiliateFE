@@ -17,9 +17,8 @@ export async function POST(request: Request) {
 
   const twofa = request.headers.get("x-2fa-code") || undefined;
   const form = await request.formData();
-  if (!form.has("AccountType")) form.set("AccountType", "3");
 
-  const endpoint = new URL("/api/BankAccount/createaffbank", API_URL).toString();
+  const endpoint = new URL("/api/BankAccount/updateaffbankaccount", API_URL).toString();
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -32,7 +31,7 @@ export async function POST(request: Request) {
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    return buildErrorResponse(data, res.status, "Failed to create bank account");
+    return buildErrorResponse(data, res.status, "Failed to update bank account");
   }
 
   return NextResponse.json(data ?? {}, { status: res.status });

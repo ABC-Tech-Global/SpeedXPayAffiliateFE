@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { useAffiliateBankOptions } from "../hooks/useAffiliateBankOptions";
 import { useCreateAffiliateBank } from "../hooks/useCreateAffiliateBank";
+import { useUpdateAffiliateBank } from "../hooks/useUpdateAffiliateBank";
 import { useTwoFactorStatus } from "../hooks/useTwoFactorStatus";
 
 const ACCOUNT_NAME_MIN = 2;
@@ -20,6 +21,16 @@ const ACCOUNT_NAME_MAX = 100;
 type ButtonVariant = React.ComponentProps<typeof Button>["variant"];
 type ButtonSize = React.ComponentProps<typeof Button>["size"];
 
+type DialogMode = "create" | "edit";
+
+type BankAccountShape = {
+  id: number;
+  bankType: number;
+  bankId?: number;
+  accountName: string;
+  accountNumber: string;
+};
+
 type AddBankDialogButtonProps = {
   label?: string;
   onSuccess?: () => void | Promise<void>;
@@ -27,6 +38,8 @@ type AddBankDialogButtonProps = {
   variant?: ButtonVariant;
   size?: ButtonSize;
   className?: string;
+  mode?: DialogMode;
+  account?: BankAccountShape | null;
 };
 
 function validateBankSelection(value: string): string {
@@ -53,19 +66,45 @@ function validateTwofaCode(value: string, required: boolean): string {
   return /^\d{6}$/.test(trimmed) ? "" : "Enter a valid 6-digit code";
 }
 
+function friendlySubmitError(mode: DialogMode, backendMessage?: string): string {
+  const raw = backendMessage?.toLowerCase() ?? "";
+  if (raw.includes("duplicate") || raw.includes("already")) {
+    return "This bank account already exists. Use a different account number or edit the existing entry.";
+  }
+  if (raw.includes("invalid request")) {
+    return mode === "edit"
+      ? "We couldn’t update the bank account. Check the details and try again."
+      : "We couldn’t add the bank account. Check the details and try again.";
+  }
+  if (raw.includes("required")) {
+    return "Some required fields are missing. Fill in all fields and try again.";
+  }
+  return mode === "edit"
+    ? "Unable to update the bank account right now. Please try again shortly."
+    : "Unable to add the bank account right now. Please try again shortly.";
+}
+
 export function AddBankDialogButton({
-  label = "Add bank account",
+  label,
   onSuccess,
   disabled,
   variant = "default",
   size = "default",
   className,
+  mode = "create",
+  account,
 }: AddBankDialogButtonProps) {
   const [open, setOpen] = React.useState(false);
 
   const { options: bankOptions, loading: banksLoading, error: banksError } = useAffiliateBankOptions(open);
   const twofaEnabled = useTwoFactorStatus(open);
   const { submit: createAffiliateBank, loading: submitLoading } = useCreateAffiliateBank();
+  const { submit: updateAffiliateBank, loading: updateLoading } = useUpdateAffiliateBank();
+
+  const isEdit = mode === "edit" && Boolean(account);
+  const computedLabel = label ?? (isEdit ? "Edit" : "Add bank account");
+
+  const effectiveSubmitLoading = isEdit ? updateLoading : submitLoading;
 
   const [selectedBankType, setSelectedBankType] = React.useState("");
   const [accountHolderName, setAccountHolderName] = React.useState("");
@@ -116,7 +155,23 @@ export function AddBankDialogButton({
     !accountNumberValidationMessage &&
     !twofaValidationMessage &&
     !banksLoading &&
-    !submitLoading;
+    !effectiveSubmitLoading;
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (!isEdit || !account) return;
+    setSelectedBankType(String(account.bankType));
+    setAccountHolderName(account.accountName);
+    setAccountNumber(account.accountNumber);
+    setBankFieldTouched(false);
+    setAccountNameTouched(false);
+    setAccountNumberTouched(false);
+    setTwofaTouched(false);
+    setBankFieldError("");
+    setAccountNameError("");
+    setAccountNumberError("");
+    setTwofaError("");
+  }, [account, isEdit, open]);
 
   const handleSubmit = React.useCallback(async () => {
     setBankFieldTouched(true);
@@ -142,6 +197,45 @@ export function AddBankDialogButton({
     const trimmedName = accountHolderName.trim();
     const trimmedNumber = accountNumber.trim();
 
+      if (isEdit && account) {
+        const { success, message, fieldErrors } = await updateAffiliateBank({
+          bankAccountId: account.id,
+          bankType,
+          bankId: account.bankId,
+          accountName: trimmedName,
+          accountNumber: trimmedNumber,
+          twofaCode: twofaEnabled ? twofaCode : undefined,
+        });
+
+      if (success) {
+        toast.success(message || "Bank details updated");
+        setOpen(false);
+        resetForm();
+        try {
+          await onSuccess?.();
+        } catch {}
+        return;
+      }
+
+      if (fieldErrors?.accountName) {
+        setAccountNameError(fieldErrors.accountName);
+        setAccountNameTouched(true);
+      }
+      if (fieldErrors?.accountNumber) {
+        setAccountNumberError(fieldErrors.accountNumber);
+        setAccountNumberTouched(true);
+      }
+      if (fieldErrors?.twofa) {
+        setTwofaError(fieldErrors.twofa);
+        setTwofaTouched(true);
+      }
+
+      if (!fieldErrors?.accountName && !fieldErrors?.accountNumber && !fieldErrors?.twofa) {
+        toast.error(friendlySubmitError("edit", message));
+      }
+      return;
+    }
+
     const { success, message, fieldErrors } = await createAffiliateBank({
       bankType,
       accountName: trimmedName,
@@ -155,9 +249,7 @@ export function AddBankDialogButton({
       resetForm();
       try {
         await onSuccess?.();
-      } catch {
-        // Ignore downstream errors so dialog can close gracefully
-      }
+      } catch {}
       return;
     }
 
@@ -175,14 +267,17 @@ export function AddBankDialogButton({
     }
 
     if (!fieldErrors?.accountName && !fieldErrors?.accountNumber && !fieldErrors?.twofa) {
-      toast.error(message || "Failed to add bank details");
+      toast.error(friendlySubmitError("create", message));
     }
   }, [
     accountHolderName,
     accountNumber,
+    account,
     createAffiliateBank,
     onSuccess,
     resetForm,
+    isEdit,
+    updateAffiliateBank,
     selectedBankType,
     twofaCode,
     twofaEnabled,
@@ -199,7 +294,7 @@ export function AddBankDialogButton({
           if (!disabled) setOpen(true);
         }}
       >
-        {label}
+        {computedLabel}
       </Button>
       <Dialog
         open={open}
@@ -210,7 +305,7 @@ export function AddBankDialogButton({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add payout bank details</DialogTitle>
+            <DialogTitle>{isEdit ? "Edit payout bank details" : "Add payout bank details"}</DialogTitle>
           </DialogHeader>
           <div className="relative">
             {banksLoading && (
@@ -333,7 +428,7 @@ export function AddBankDialogButton({
 
           <DialogFooter>
             <Button onClick={handleSubmit} disabled={!canSubmit}>
-              {submitLoading ? "Saving…" : "Save account"}
+              {effectiveSubmitLoading ? "Saving…" : isEdit ? "Save changes" : "Save account"}
             </Button>
           </DialogFooter>
         </DialogContent>

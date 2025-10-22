@@ -4,6 +4,7 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import { apiFetch } from "@/lib/api-client";
 import { useTwofaPrompt } from "@/features/profile/hooks/useTwofaPrompt";
@@ -13,6 +14,7 @@ import { useAffiliateBankOptions } from "@/features/bank-accounts/hooks/useAffil
 type AffiliateAccount = {
   id: number;
   bankType: number;
+  bankId?: number;
   accountName: string;
   accountNumber: string;
   isActive: boolean;
@@ -68,10 +70,11 @@ function normalizeAffiliateAccounts(payload: unknown): AffiliateAccount[] {
 
     const id = toNumber(record.id ?? record.ID);
     const bankType = toNumber(record.bankType ?? record.BankType ?? record.type);
-    const accountName = trimString(record.accountName ?? record.AccountName);
+    const accountName = trimString(record.accountName ?? record.AccountName ?? record.BankAccountName);
     const accountNumber = trimString(record.accountNumber ?? record.AccountNumber);
     const bankLabel = trimString(record.bank ?? record.bankName ?? record.BankName);
     const isActive = toBoolean(record.isActive ?? record.IsActive ?? record.active);
+    const bankId = toNumber(record.bankId ?? record.BankId);
 
     if (typeof id === "undefined" || typeof bankType === "undefined") continue;
     if (!accountName || !accountNumber) continue;
@@ -79,6 +82,7 @@ function normalizeAffiliateAccounts(payload: unknown): AffiliateAccount[] {
     result.push({
       id,
       bankType,
+      bankId,
       accountName,
       accountNumber,
       bankLabel: bankLabel || undefined,
@@ -92,6 +96,8 @@ function normalizeAffiliateAccounts(payload: unknown): AffiliateAccount[] {
 export default function BankAccountsTab() {
   const [accounts, setAccounts] = React.useState<AffiliateAccount[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [pendingDelete, setPendingDelete] = React.useState<AffiliateAccount | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
   const { withTwofa, DialogUI } = useTwofaPrompt();
   const { options: bankOptions } = useAffiliateBankOptions(true);
 
@@ -129,6 +135,36 @@ export default function BankAccountsTab() {
 
   const canAddMore = accounts.length < MAX_ACCOUNTS;
   const empty = !loading && accounts.length === 0;
+
+  const handleConfirmDelete = React.useCallback(async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await withTwofa(async (headers) => {
+        await apiFetch(`/api/BankAccount/deleteaffbankaccount/${pendingDelete.id}`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({}),
+        });
+      });
+      toast.success("Bank account deleted");
+      setPendingDelete(null);
+      await loadAccounts();
+    } catch (err) {
+      if (err instanceof Error) {
+        const message = err.message || "";
+        if (message.includes("2fa canceled")) {
+          // User cancelled 2FA prompt; suppress toast.
+          return;
+        }
+        toast.error(message || "Failed to delete bank account");
+      } else {
+        toast.error("Failed to delete bank account");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }, [loadAccounts, pendingDelete, withTwofa]);
 
   return (
     <div className="space-y-4">
@@ -169,24 +205,23 @@ export default function BankAccountsTab() {
                     <td className="px-4 py-2">
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-mono text-xs sm:text-sm">{account.accountNumber}</span>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={async () => {
-                            try {
-                              await withTwofa(async (headers) => {
-                                await apiFetch(`/api/bank-accounts/${account.id}`, { method: "DELETE", headers });
-                              });
-                              toast.success("Bank account removed");
-                              await loadAccounts();
-                            } catch (err) {
-                              if (err instanceof Error && err.message.includes("2fa")) return;
-                              toast.error(err instanceof Error ? err.message : "Failed to remove account");
-                            }
-                          }}
-                        >
-                          Remove
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <AddBankDialogButton
+                            mode="edit"
+                            size="sm"
+                            variant="outline"
+                            label="Edit"
+                            account={account}
+                            onSuccess={loadAccounts}
+                          />
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setPendingDelete(account)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -201,6 +236,25 @@ export default function BankAccountsTab() {
           </div>
         </div>
       )}
+
+      <Dialog open={Boolean(pendingDelete)} onOpenChange={(open) => { if (!open) setPendingDelete(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete bank account</DialogTitle>
+            <DialogDescription>
+              This bank account will be removed from your payout options.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingDelete(null)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleting}>
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {DialogUI}
     </div>

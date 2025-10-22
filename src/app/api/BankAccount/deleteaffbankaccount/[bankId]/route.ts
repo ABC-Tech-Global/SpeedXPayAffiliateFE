@@ -10,30 +10,34 @@ function buildErrorResponse(data: unknown, status: number, fallback: string) {
   return NextResponse.json({ error: fallback }, { status });
 }
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ bankId: string }> },
+) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value || "";
-  if (!token) return NextResponse.json({ error: "missing token" }, { status: 401 });
+  if (!token) {
+    return NextResponse.json({ error: "missing token" }, { status: 401 });
+  }
 
-  const twofa = request.headers.get("x-2fa-code") || undefined;
-  const form = await request.formData();
-  if (!form.has("AccountType")) form.set("AccountType", "3");
+  const { bankId } = await params;
+  const endpoint = new URL(`/api/BankAccount/deleteaffbankaccount/${encodeURIComponent(bankId)}`, API_URL).toString();
 
-  const endpoint = new URL("/api/BankAccount/createaffbank", API_URL).toString();
   const res = await fetch(endpoint, {
     method: "POST",
+    cache: "no-store",
     headers: {
       Authorization: `Bearer ${token}`,
-      Accept: "*/*",
-      ...(twofa ? { "x-2fa-code": twofa } : {}),
+      Accept: "application/json",
     },
-    body: form,
+    // Upstream endpoint accepts an empty JSON body; send minimal payload.
+    body: JSON.stringify({}),
   });
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    return buildErrorResponse(data, res.status, "Failed to create bank account");
+    return buildErrorResponse(data, res.status, "Failed to delete bank account");
   }
 
-  return NextResponse.json(data ?? {}, { status: res.status });
+  return NextResponse.json(data ?? { success: true });
 }

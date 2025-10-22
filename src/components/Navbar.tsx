@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -53,10 +54,10 @@ export default function Navbar({ user }: Props) {
               </SheetHeader>
               <nav className="px-4 py-4 flex flex-col gap-2 text-sm h-full" aria-label="Primary">
                 <Link
-                  href="/"
+                  href="/dashboard"
                   className={clsx(
                     "py-1",
-                    pathname === "/" && "text-foreground font-medium underline"
+                    pathname?.startsWith("/dashboard") && "text-foreground font-medium"
                   )}
                   onClick={() => setMobileOpen(false)}
                 >
@@ -85,15 +86,16 @@ export default function Navbar({ user }: Props) {
               </nav>
             </SheetContent>
           </Sheet>
-          <Link href="/" className="text-sm font-semibold">
-            App
+          <Link href="/dashboard" aria-label="SpeedXPay Affiliate logo" className="flex items-center gap-2">
+            <Image src="/logo.png" alt="SpeedXPay logo" width={32} height={32} priority className="h-8 w-8" />
           </Link>
           <nav className="hidden md:flex items-center gap-3 text-sm text-muted-foreground">
             <Link
-              href="/"
+              href="/dashboard"
               className={clsx(
-                "hover:underline",
-                pathname === "/" && "text-foreground font-medium underline"
+                pathname?.startsWith("/dashboard")
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               Dashboard
@@ -101,8 +103,9 @@ export default function Navbar({ user }: Props) {
             <Link
               href="/referrals"
               className={clsx(
-                "hover:underline",
-                pathname?.startsWith("/referrals") && "text-foreground font-medium underline"
+                pathname?.startsWith("/referrals")
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               Referrals
@@ -110,8 +113,9 @@ export default function Navbar({ user }: Props) {
             <Link
               href="/payouts"
               className={clsx(
-                "hover:underline",
-                pathname?.startsWith("/payouts") && "text-foreground font-medium underline"
+                pathname?.startsWith("/payouts")
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               Payouts
