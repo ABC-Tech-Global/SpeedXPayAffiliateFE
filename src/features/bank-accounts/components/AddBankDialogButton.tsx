@@ -49,9 +49,37 @@ function validateBankSelection(value: string): string {
 
 function validateAccountHolderName(value: string): string {
   const trimmed = value.trim();
-  if (trimmed.length < ACCOUNT_NAME_MIN || trimmed.length > ACCOUNT_NAME_MAX) {
-    return "Account holder name must be 2-100 characters long";
+
+  if (!trimmed) {
+    return "Full name must not be empty";
   }
+
+  if (value !== trimmed) {
+    return "Full name cannot start or end with spaces";
+  }
+
+  if (trimmed.length < ACCOUNT_NAME_MIN || trimmed.length > ACCOUNT_NAME_MAX) {
+    return "Full name must be between 2 and 100 characters";
+  }
+
+  if (/( {2,}|-{2,}|'{2,}|’{2,})/.test(trimmed)) {
+    return "Full name cannot contain consecutive spaces, hyphens, or apostrophes";
+  }
+
+  if (/[<>\/\\&%]/.test(trimmed)) {
+    return "Full name contains unsupported characters";
+  }
+
+  if (/\p{N}/u.test(trimmed)) {
+    return "Full name cannot include numbers";
+  }
+
+  const allowedPattern = /^[\p{L}\p{M}'’ -]+$/u;
+
+  if (!allowedPattern.test(trimmed)) {
+    return "Full name contains unsupported characters";
+  }
+
   return "";
 }
 
